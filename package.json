@@ -1,0 +1,46 @@
+{
+  "name": "weshare-v3",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "@prisma/client": "^5.19.0",
+    "next-auth": "^4.24.7",
+    "zod": "^3.23.8",
+    "@tanstack/react-query": "^5.56.0",
+    "socket.io-client": "^4.7.5",
+    "nodemailer": "^7.0.7",
+    "libphonenumber-js": "^1.11.5",
+    "sonner": "^1.5.0",
+    "@faker-js/faker": "^8.4.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/node": "^20.14.12",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/nodemailer": "^6.4.15",
+    "prisma": "^5.19.0",
+    "tailwindcss": "^3.4.7",
+    "postcss": "^8.4.40",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0",
+    "tsx": "^4.16.2"
+  }
+}
+

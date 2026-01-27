@@ -1,0 +1,202 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  DRIVER
+  PASSENGER
+  AGENCY
+}
+
+enum TripStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentMethod {
+  MTN_MOBILE_MONEY
+  AIRTEL_MONEY
+}
+
+model User {
+  id            String    @id @default(cuid())
+  phone         String    @unique
+  name          String
+  role          UserRole
+  phoneVerified Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  tripsAsDriver    Trip[]           @relation("DriverTrips")
+  bookings         Booking[]        @relation("PassengerBookings")
+  messagesSent     Message[]        @relation("SenderMessages")
+  messagesReceived Message[]        @relation("ReceiverMessages")
+  payments         Payment[]        @relation("UserPayments")
+  busTrips         BusTrip[]        @relation("AgencyBusTrips")
+  ticketBookings   TicketBooking[]
+
+  @@index([phone])
+  @@index([role])
+}
+
+model Trip {
+  id                  String        @id @default(cuid())
+  driverId            String
+  departCity          String
+  departLocation      String
+  destinationCity     String
+  destinationLocation String
+  date                DateTime
+  time                String
+  availableSeats      Int
+  price               Int
+  carModel            String
+  status              TripStatus    @default(ACTIVE)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  driver    User      @relation("DriverTrips", fields: [driverId], references: [id], onDelete: Cascade)
+  bookings  Booking[]
+
+  @@index([driverId])
+  @@index([departCity, destinationCity])
+  @@index([date])
+  @@index([status])
+}
+
+model BusTrip {
+  id            String          @id @default(cuid())
+  agencyId      String
+  departCity    String
+  destinationCity String
+  date          DateTime
+  time          String
+  totalSeats    Int
+  availableSeats Int
+  status        TripStatus      @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  agency          User            @relation("AgencyBusTrips", fields: [agencyId], references: [id], onDelete: Cascade)
+  ticketBookings  TicketBooking[]
+
+  @@index([agencyId])
+  @@index([departCity, destinationCity])
+  @@index([date])
+  @@index([status])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  tripId    String
+  userId    String
+  seats     Int
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  trip     Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger User     @relation("PassengerBookings", fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+  payments Payment[]
+
+  @@index([tripId])
+  @@index([userId])
+  @@index([status])
+}
+
+model TicketBooking {
+  id        String        @id @default(cuid())
+  busTripId String
+  userId    String
+  seats     Int
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  busTrip  BusTrip  @relation(fields: [busTripId], references: [id], onDelete: Cascade)
+  passenger User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([busTripId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  bookingId String
+  senderId  String
+  receiverId String
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  sender   User    @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User    @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([senderId, receiverId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String
+  userId        String
+  amount        Int
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation("UserPayments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([userId])
+  @@index([status])
+  @@index([transactionId])
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([phone])
+  @@index([expiresAt])
+}
+

@@ -23,6 +23,9 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "WeShare - Carpooling & Bus Ticketing",
   description: "Connect drivers with passengers and book inter-city bus tickets",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

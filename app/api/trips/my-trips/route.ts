@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
             },
           },
           orderBy: {
-            createdAt: 'desc',
+            updatedAt: 'desc',
           },
         },
       },

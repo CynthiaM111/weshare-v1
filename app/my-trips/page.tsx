@@ -10,6 +10,7 @@ interface Booking {
   seats: number
   status: string
   createdAt: string
+  updatedAt: string
   passenger: {
     id: string
     name: string
@@ -242,6 +243,7 @@ export default function MyTripsPage() {
             {trips.map((trip) => {
               const confirmedBookings = trip.bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
               const pendingBookings = trip.bookings.filter(b => b.status === 'PENDING')
+              const cancelledBookings = trip.bookings.filter(b => b.status === 'CANCELLED')
               const bookedSeats = confirmedBookings.reduce((sum, b) => sum + b.seats, 0)
               const remainingSeats = trip.availableSeats - bookedSeats
 
@@ -305,15 +307,31 @@ export default function MyTripsPage() {
                   </div>
 
                   <div className="border-t border-gray-300 pt-4 mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="text-sm text-gray-800">
-                        <span className="font-semibold text-gray-900">Available Seats:</span>{' '}
-                        {remainingSeats} / {trip.availableSeats}
-                      </p>
-                      <p className="text-sm text-gray-800">
-                        <span className="font-semibold text-gray-900">Total Bookings:</span>{' '}
-                        {trip.bookings.length}
-                      </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-700 font-semibold">Available Seats</p>
+                        <p className="text-sm text-gray-900 font-bold">
+                          {remainingSeats} / {trip.availableSeats}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-700 font-semibold">Active Bookings</p>
+                        <p className="text-sm text-gray-900 font-bold">
+                          {pendingBookings.length + confirmedBookings.length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-700 font-semibold">Cancelled</p>
+                        <p className="text-sm text-red-600 font-bold">
+                          {cancelledBookings.length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-700 font-semibold">Total Bookings</p>
+                        <p className="text-sm text-gray-900 font-bold">
+                          {trip.bookings.length}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -343,7 +361,7 @@ export default function MyTripsPage() {
                   )}
 
                   {confirmedBookings.length > 0 && (
-                    <div className="border-t border-gray-300 pt-4">
+                    <div className="border-t border-gray-300 pt-4 mb-4">
                       <h4 className="font-bold text-gray-900 mb-3">Confirmed Bookings</h4>
                       <div className="space-y-2">
                         {confirmedBookings.map((booking) => (
@@ -368,6 +386,39 @@ export default function MyTripsPage() {
                                   </span>
                                 )}
                               </Link>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {cancelledBookings.length > 0 && (
+                    <div className="border-t border-gray-300 pt-4 mb-4">
+                      <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <span>Cancelled Bookings</span>
+                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                          {cancelledBookings.length}
+                        </span>
+                      </h4>
+                      <div className="space-y-2">
+                        {cancelledBookings.map((booking) => (
+                          <div key={booking.id} className="bg-red-50 p-3 rounded-lg border border-red-200">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="font-semibold text-gray-900 line-through">{booking.passenger.name}</p>
+                                <p className="text-sm text-gray-700">{booking.passenger.phone}</p>
+                                <p className="text-sm text-gray-700">Seats: {booking.seats}</p>
+                                <p className="text-xs text-red-600 font-semibold">
+                                  Status: CANCELLED
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Cancelled: {new Date(booking.updatedAt).toLocaleDateString()} at {new Date(booking.updatedAt).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <div className="px-3 py-1 bg-red-100 text-red-800 rounded-lg text-sm font-semibold">
+                                Cancelled
+                              </div>
                             </div>
                           </div>
                         ))}

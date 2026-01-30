@@ -243,20 +243,6 @@ export default function BookTripPage() {
             {isOwnTrip && (
               <p className="text-purple-600 font-semibold mt-2">⚠️ This is your own trip. You cannot book it.</p>
             )}
-            {/* Debug info - remove in production */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="text-xs text-gray-500 mt-2 space-y-1">
-                <p>Debug: Trip Date/Time: {tripDateTime.toLocaleString()}</p>
-                <p>Debug: Current Time: {now.toLocaleString()}</p>
-                <p>Debug: Has Passed: {hasPassed ? 'Yes' : 'No'}</p>
-                <p>Debug: Hours Until Trip: {hoursUntilTrip.toFixed(2)}</p>
-                <p>Debug: Can Book: {canBook ? 'Yes' : 'No'}</p>
-                <p>Debug: Remaining Seats: {remainingSeats}</p>
-                <p>Debug: Has Existing Booking: {hasExistingBooking ? 'Yes' : 'No'}</p>
-                <p>Debug: Has Conflicting Booking: {hasConflictingBooking ? 'Yes' : 'No'}</p>
-                <p>Debug: Is Disabled: {isDisabled ? 'Yes' : 'No'}</p>
-              </div>
-            )}
           </div>
         </div>
 

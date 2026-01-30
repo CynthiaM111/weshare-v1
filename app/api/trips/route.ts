@@ -117,7 +117,20 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(trips)
+    // Filter out past trips (trips where date and time have passed)
+    const now = new Date()
+    const activeTrips = trips.filter((trip) => {
+      try {
+        const dateStr = trip.date.toISOString().split('T')[0]
+        const tripDateTime = new Date(`${dateStr}T${trip.time}:00`)
+        return tripDateTime > now
+      } catch (error) {
+        // If we can't parse the date/time, exclude the trip to be safe
+        return false
+      }
+    })
+
+    return NextResponse.json(activeTrips)
   } catch (error) {
     console.error('Error fetching trips:', error)
     return NextResponse.json(

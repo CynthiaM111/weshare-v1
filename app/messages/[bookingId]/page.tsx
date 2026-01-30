@@ -370,115 +370,214 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-900">Loading messages...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-lg font-semibold text-gray-700">Loading messages...</div>
+        </div>
       </div>
     )
   }
 
+  // Get the other participant's name
+  const otherParticipant = messages.find(m => m.senderId !== currentUserId)?.sender || 
+                          messages.find(m => m.receiverId !== currentUserId)?.receiver
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="bg-white shadow-sm border-b p-4">
-        <button
-          onClick={() => router.back()}
-          className="text-blue-600 hover:underline mb-2"
-        >
-          ← Back
-        </button>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-          <div className="flex items-center gap-2">
-            {hasNewMessages && (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+      {/* Header */}
+      <div className="bg-white shadow-md border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => {
-                  shouldAutoScroll.current = true
-                  isUserScrolledUp.current = false
-                  scrollToBottom()
-                  setHasNewMessages(false)
-                }}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-2 animate-pulse"
+                onClick={() => router.back()}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label="Go back"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                New Messages
               </button>
-            )}
-            {notificationPermission === 'default' && (
-              <button
-                onClick={async () => {
-                  if ('Notification' in window) {
-                    const permission = await Notification.requestPermission()
-                    setNotificationPermission(permission)
-                    if (permission === 'granted') {
-                      toast.success('Notifications enabled! You\'ll be notified of new messages.')
-                    }
-                  }
-                }}
-                className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300"
-                title="Enable browser notifications"
-              >
-                🔔
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4" style={{ scrollBehavior: 'smooth' }}>
-        {messages.length === 0 ? (
-          <div className="text-center text-gray-800 py-8">
-            No messages yet. Start the conversation!
-          </div>
-        ) : (
-          messages.map((message) => {
-            const isOwnMessage = message.senderId === currentUserId
-            return (
-              <div
-                key={message.id}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    isOwnMessage
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-800 shadow'
-                  }`}
-                >
-                  {!isOwnMessage && (
-                    <p className="text-xs font-semibold mb-1">{message.sender.name}</p>
-                  )}
-                  <p>{message.content}</p>
-                  <p className={`text-xs mt-1 ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {new Date(message.createdAt).toLocaleTimeString()}
-                  </p>
-                </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+                {otherParticipant && (
+                  <p className="text-sm text-gray-600">Chatting with {otherParticipant.name}</p>
+                )}
               </div>
-            )
-          })
-        )}
-        <div ref={messagesEndRef} />
+            </div>
+            <div className="flex items-center gap-2">
+              {hasNewMessages && (
+                <button
+                  onClick={() => {
+                    shouldAutoScroll.current = true
+                    isUserScrolledUp.current = false
+                    scrollToBottom()
+                    setHasNewMessages(false)
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold rounded-full hover:from-blue-700 hover:to-blue-800 flex items-center gap-2 shadow-lg animate-pulse transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  New Messages
+                </button>
+              )}
+              {notificationPermission === 'default' && (
+                <button
+                  onClick={async () => {
+                    if ('Notification' in window) {
+                      const permission = await Notification.requestPermission()
+                      setNotificationPermission(permission)
+                      if (permission === 'granted') {
+                        toast.success('Notifications enabled! You\'ll be notified of new messages.')
+                      }
+                    }
+                  }}
+                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                  title="Enable browser notifications"
+                >
+                  <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <form onSubmit={handleSendMessage} className="bg-white border-t p-4">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none placeholder:text-gray-500"
-            disabled={sending}
-          />
-          <button
-            type="submit"
-            disabled={sending || !newMessage.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
+      {/* Messages Container */}
+      <div 
+        ref={messagesContainerRef} 
+        className="flex-1 overflow-y-auto px-4 py-6" 
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        <div className="max-w-4xl mx-auto">
+          {messages.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-200 rounded-full mb-4">
+                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No messages yet</h3>
+              <p className="text-gray-600">Start the conversation by sending a message below!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((message, index) => {
+                const isOwnMessage = message.senderId === currentUserId
+                const prevMessage = index > 0 ? messages[index - 1] : null
+                const showSenderName = !isOwnMessage && (!prevMessage || prevMessage.senderId !== message.senderId)
+                const showTimeSeparator = prevMessage && 
+                  new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime() > 300000 // 5 minutes
+                
+                return (
+                  <div key={message.id}>
+                    {showTimeSeparator && (
+                      <div className="flex items-center justify-center my-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-px bg-gray-300 flex-1 w-16"></div>
+                          <span className="text-xs text-gray-500 font-medium">
+                            {new Date(message.createdAt).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          <div className="h-px bg-gray-300 flex-1 w-16"></div>
+                        </div>
+                      </div>
+                    )}
+                    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-1`}>
+                      <div className={`flex items-end gap-2 max-w-[75%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {!isOwnMessage && (
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mb-1">
+                            {message.sender.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+                          {showSenderName && (
+                            <span className="text-xs font-semibold text-gray-700 mb-1 px-2">
+                              {message.sender.name}
+                            </span>
+                          )}
+                          <div
+                            className={`px-4 py-2.5 rounded-2xl shadow-sm ${
+                              isOwnMessage
+                                ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-sm'
+                                : 'bg-white text-gray-900 border border-gray-200 rounded-tl-sm'
+                            }`}
+                          >
+                            <p className={`text-sm leading-relaxed ${isOwnMessage ? 'text-white' : 'text-gray-900'}`}>
+                              {message.content}
+                            </p>
+                            <div className={`flex items-center gap-1 mt-1.5 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                              <span className={`text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'}`}>
+                                {new Date(message.createdAt).toLocaleTimeString('en-US', { 
+                                  hour: 'numeric', 
+                                  minute: '2-digit',
+                                  hour12: true 
+                                })}
+                              </span>
+                              {isOwnMessage && (
+                                <svg className="w-3.5 h-3.5 text-blue-200" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
-      </form>
+      </div>
+
+      {/* Input Area */}
+      <div className="bg-white border-t border-gray-200 shadow-lg">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <form onSubmit={handleSendMessage} className="flex items-end gap-3">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="w-full px-4 py-3 pr-12 border-2 border-gray-300 rounded-2xl text-gray-900 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none focus:bg-white placeholder:text-gray-400 transition-all"
+                disabled={sending}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={sending || !newMessage.trim()}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+            >
+              {sending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <>
+                  <span>Send</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

@@ -117,6 +117,47 @@ export default function BookingsPage() {
     }
   }
 
+  const handleCancelBooking = async (bookingId: string) => {
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+    if (!userStr) return
+
+    const user = JSON.parse(userStr)
+
+    // Confirm cancellation
+    if (!confirm('Are you sure you want to cancel this booking? Cancellations must be made at least 1 hour before departure.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'x-user-id': user.id,
+        },
+      })
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response:', text)
+        throw new Error('Invalid response from server. Please try again.')
+      }
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to cancel booking')
+      }
+
+      toast.success('Booking cancelled successfully!')
+      fetchBookings(true)
+      fetchUnreadCounts()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to cancel booking')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -248,25 +289,67 @@ export default function BookingsPage() {
                   </div>
                 </div>
                 <div className="border-t border-gray-300 pt-4">
-                  <p className="text-sm text-gray-800">
-                    <span className="font-semibold text-gray-900">Driver:</span> {booking.trip.driver.name} ({booking.trip.driver.phone})
-                  </p>
-                  <p className="text-sm text-gray-800">
-                    <span className="font-semibold text-gray-900">Car:</span> {booking.trip.carModel}
-                  </p>
-                  {booking.status === 'CONFIRMED' && (
-                    <Link
-                      href={`/messages/${booking.id}`}
-                      className="mt-2 inline-block text-blue-600 hover:underline text-sm font-medium relative"
-                    >
-                      Message Driver
-                      {unreadCounts[booking.id] > 0 && (
-                        <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                          {unreadCounts[booking.id] > 9 ? '9+' : unreadCounts[booking.id]} new
-                        </span>
+                  <div className="mb-4 space-y-2">
+                    <p className="text-sm text-gray-800">
+                      <span className="font-semibold text-gray-900">Driver:</span> {booking.trip.driver.name} ({booking.trip.driver.phone})
+                    </p>
+                    <p className="text-sm text-gray-800">
+                      <span className="font-semibold text-gray-900">Car:</span> {booking.trip.carModel}
+                    </p>
+                  </div>
+                  
+                  {/* Actions Section */}
+                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pt-3 border-t border-gray-200">
+                    <div className="flex items-center gap-3">
+                      {booking.status === 'CONFIRMED' && (
+                        <Link
+                          href={`/messages/${booking.id}`}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition shadow-sm hover:shadow-md"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          Message Driver
+                          {unreadCounts[booking.id] > 0 && (
+                            <span className="ml-1 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                              {unreadCounts[booking.id] > 9 ? '9+' : unreadCounts[booking.id]}
+                            </span>
+                          )}
+                        </Link>
                       )}
-                    </Link>
-                  )}
+                    </div>
+                    
+                    {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (() => {
+                      // Check if booking can be cancelled (at least 1 hour before departure)
+                      let tripDateTime: Date
+                      try {
+                        const dateStr = typeof booking.trip.date === 'string' 
+                          ? booking.trip.date.split('T')[0] 
+                          : new Date(booking.trip.date).toISOString().split('T')[0]
+                        tripDateTime = new Date(`${dateStr}T${booking.trip.time}:00`)
+                      } catch (error) {
+                        tripDateTime = new Date()
+                      }
+                      
+                      const now = new Date()
+                      const hoursUntilTrip = (tripDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+                      const canCancel = !isNaN(tripDateTime.getTime()) && hoursUntilTrip >= 1 && tripDateTime > now
+                      
+                      return (
+                        <button
+                          onClick={() => handleCancelBooking(booking.id)}
+                          disabled={!canCancel}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-red-300 text-red-700 rounded-lg hover:bg-red-50 hover:border-red-400 disabled:bg-gray-50 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed text-sm font-medium transition shadow-sm hover:shadow disabled:shadow-none"
+                          title={!canCancel ? 'Cancellations must be made at least 1 hour before departure' : 'Cancel this booking'}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Cancel Booking
+                        </button>
+                      )
+                    })()}
+                  </div>
                 </div>
               </div>
             ))}

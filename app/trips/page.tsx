@@ -32,8 +32,9 @@ interface Trip {
 export default function TripsPage() {
   const router = useRouter()
   const [trips, setTrips] = useState<Trip[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [filters, setFilters] = useState({
     departCity: '',
@@ -42,8 +43,7 @@ export default function TripsPage() {
   })
 
   useEffect(() => {
-    fetchTrips()
-    // Get current user ID
+    // Get current user ID only
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
     if (userStr) {
       try {
@@ -64,6 +64,12 @@ export default function TripsPage() {
   }
 
   const handleApplyFilters = () => {
+    // Require at least one filter
+    if (!filters.departCity && !filters.destinationCity && !filters.date) {
+      toast.error('Please provide at least one search criteria (depart city, destination city, or date)')
+      return
+    }
+    setHasSearched(true)
     fetchTripsWithFilters(filters)
   }
 
@@ -74,8 +80,8 @@ export default function TripsPage() {
       date: '',
     }
     setFilters(clearedFilters)
-    // Fetch trips without filters
-    fetchTripsWithFilters(clearedFilters)
+    setTrips([])
+    setHasSearched(false)
   }
 
   const fetchTripsWithFilters = async (filterValues: typeof filters, isRefresh = false) => {
@@ -117,7 +123,7 @@ export default function TripsPage() {
 
   const handleDeleteTrip = async (tripId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent any parent click handlers
-    
+
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
     if (!userStr) {
       toast.error('Please login first')
@@ -152,13 +158,6 @@ export default function TripsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading trips...</div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -233,7 +232,7 @@ export default function TripsPage() {
                   </button>
                 )}
               </div>
-              
+
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
@@ -288,7 +287,7 @@ export default function TripsPage() {
                   Apply Filters
                 </button>
               </div>
-              
+
               {hasActiveFilters && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Active Filters</p>
@@ -319,7 +318,27 @@ export default function TripsPage() {
 
           {/* Trips Grid */}
           <div className="flex-1">
-            {trips.length === 0 ? (
+            {!hasSearched ? (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <p className="text-gray-900 text-xl font-bold mb-2">Search for Trips</p>
+                <p className="text-gray-600 text-base mb-4">Enter at least one search criteria to find available trips</p>
+                <p className="text-gray-500 text-sm">Fill in depart city, destination city, or select a date above</p>
+              </div>
+            ) : loading ? (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <p className="text-gray-600 text-lg font-medium">Loading trips...</p>
+              </div>
+            ) : trips.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,85 +358,69 @@ export default function TripsPage() {
                   const isOwnTrip = currentUserId && trip.driver.id === currentUserId
 
                   return (
-                    <div key={trip.id} className="group bg-white rounded-2xl shadow-md hover:shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 hover:-translate-y-0.5">
+                    <div key={trip.id} className={`group bg-white rounded-2xl shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-0.5 ${isOwnTrip ? 'border border-gray-200' : 'border border-gray-200'}`}>
                       {/* Card Header */}
-                      <div className="relative bg-gray-50 border-b border-gray-200 p-6">
+                      <div className="relative border-b border-gray-200 p-5">
                         {isOwnTrip && (
                           <span className="absolute top-4 right-4 px-3 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-full border border-purple-200">
                             Your Trip
                           </span>
                         )}
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                              {trip.departCity} → {trip.destinationCity}
-                            </h3>
-                            <p className="text-gray-600 text-sm font-medium">
-                              {trip.departLocation} → {trip.destinationLocation}
-                            </p>
-                          </div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                            {trip.departCity} → {trip.destinationCity}
+                          </h3>
+                          <p className="text-gray-600 text-sm">
+                            {trip.departLocation} → {trip.destinationLocation}
+                          </p>
                         </div>
                       </div>
 
                       {/* Card Body */}
-                      <div className="p-6">
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Date</p>
-                              <p className="text-sm font-bold text-gray-900">{new Date(trip.date).toLocaleDateString()}</p>
-                            </div>
+                      <div className="p-5">
+                        {/* Trip Details - Horizontal Layout */}
+                        <div className="flex flex-wrap gap-x-6 gap-y-3 mb-5 text-sm">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-gray-500">Date:</span>
+                            <span className="font-semibold text-gray-900">{new Date(trip.date).toLocaleDateString()}</span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Time</p>
-                              <p className="text-sm font-bold text-gray-900">{trip.time}</p>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-gray-500">Time:</span>
+                            <span className="font-semibold text-gray-900">{trip.time}</span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Seats</p>
-                              <p className="text-sm font-bold text-gray-900">{remainingSeats} available</p>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            <span className="text-gray-500">Seats:</span>
+                            <span className="font-semibold text-gray-900">{remainingSeats} available</span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Car</p>
-                              <p className="text-sm font-bold text-gray-900">{trip.carModel}</p>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            <span className="text-gray-500">Car:</span>
+                            <span className="font-semibold text-gray-900">{trip.carModel}</span>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        {/* Price and Driver Section */}
+                        <div className="flex items-center justify-between mb-5 p-4 bg-gray-50 rounded-lg border border-gray-200">
                           <div>
-                            <p className="text-xs text-gray-600 font-medium">Price per seat</p>
-                            <p className="text-2xl font-bold text-gray-900">
+                            <p className="text-xs text-gray-500 mb-1">Price per seat</p>
+                            <p className="text-xl font-bold text-blue-600">
                               RWF {trip.price.toLocaleString()}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs text-gray-600 font-medium">Driver</p>
-                            <p className="text-sm font-bold text-gray-900">{trip.driver.name}</p>
+                            <p className="text-xs text-gray-500 mb-1">Driver</p>
+                            <p className="text-sm font-semibold text-gray-900">{trip.driver.name}</p>
                           </div>
                         </div>
 

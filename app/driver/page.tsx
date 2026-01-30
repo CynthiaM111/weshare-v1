@@ -130,7 +130,7 @@ export default function DriverDashboard() {
         <div className="space-y-6">
           {trips.length === 0 ? (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <p className="text-gray-600 mb-4">You haven't posted any trips yet.</p>
+              <p className="text-gray-600 mb-4">You haven&apos;t posted any trips yet.</p>
               <Link href="/trips/new" className="text-blue-600 hover:underline">
                 Post your first trip
               </Link>

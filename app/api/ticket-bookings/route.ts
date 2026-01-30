@@ -48,11 +48,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate: bookings must be made at most 2 hours before trip
+    // Check if trip date/time has passed
     const tripDateTime = new Date(`${busTrip.date.toISOString().split('T')[0]}T${busTrip.time}`)
     const now = new Date()
+    
+    if (tripDateTime <= now) {
+      return NextResponse.json(
+        { error: 'Cannot book a trip that has already passed' },
+        { status: 400 }
+      )
+    }
+
     const hoursUntilTrip = (tripDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
 
+    // Validate: bookings must be made at least 2 hours before trip
     if (hoursUntilTrip < 2) {
       return NextResponse.json(
         { error: 'Bookings must be made at least 2 hours before departure' },
@@ -60,9 +69,70 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Calculate available seats
-    const bookedSeats = busTrip.ticketBookings.reduce((sum, b) => sum + b.seats, 0)
+    // Check if user already has a booking for this bus trip
+    const existingBooking = await prisma.ticketBooking.findFirst({
+      where: {
+        busTripId: validatedData.busTripId,
+        userId,
+        status: {
+          in: ['PENDING', 'CONFIRMED'],
+        },
+      },
+    })
+
+    if (existingBooking) {
+      return NextResponse.json(
+        { error: 'You already have a booking for this bus trip' },
+        { status: 400 }
+      )
+    }
+
+    // Check if user has another booking at the same date/time
+    const conflictingBookings = await prisma.ticketBooking.findMany({
+      where: {
+        userId,
+        status: {
+          in: ['PENDING', 'CONFIRMED'],
+        },
+        busTrip: {
+          date: busTrip.date,
+          time: busTrip.time,
+        },
+      },
+      include: {
+        busTrip: true,
+      },
+    })
+
+    if (conflictingBookings.length > 0) {
+      const conflictingTrip = conflictingBookings[0].busTrip
+      return NextResponse.json(
+        { 
+          error: `You already have a booking for another bus trip on ${new Date(conflictingTrip.date).toLocaleDateString()} at ${conflictingTrip.time}` 
+        },
+        { status: 400 }
+      )
+    }
+
+    // Calculate available seats (including all confirmed bookings)
+    const allBookings = await prisma.ticketBooking.findMany({
+      where: {
+        busTripId: validatedData.busTripId,
+        status: {
+          in: ['CONFIRMED', 'COMPLETED'],
+        },
+      },
+    })
+    
+    const bookedSeats = allBookings.reduce((sum, b) => sum + b.seats, 0)
     const availableSeats = busTrip.availableSeats - bookedSeats
+
+    if (availableSeats <= 0) {
+      return NextResponse.json(
+        { error: 'This bus trip is fully booked. No seats available.' },
+        { status: 400 }
+      )
+    }
 
     if (validatedData.seats > availableSeats) {
       return NextResponse.json(

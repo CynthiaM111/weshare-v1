@@ -51,30 +51,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([trip])
     }
 
-    const departCity = searchParams.get('departCity')
-    const destinationCity = searchParams.get('destinationCity')
-    const date = searchParams.get('date')
+    const departCity = searchParams.get('departCity')?.trim()
+    const destinationCity = searchParams.get('destinationCity')?.trim()
+    const date = searchParams.get('date')?.trim()
     const status = searchParams.get('status') || 'ACTIVE'
 
     const where: any = {
       status: status as any,
     }
 
+    // Case-insensitive city filtering using contains
     if (departCity) {
-      where.departCity = departCity
+      where.departCity = {
+        contains: departCity,
+        mode: 'insensitive',
+      }
     }
 
     if (destinationCity) {
-      where.destinationCity = destinationCity
+      where.destinationCity = {
+        contains: destinationCity,
+        mode: 'insensitive',
+      }
     }
 
+    // Date filtering - handle properly
     if (date) {
-      const dateObj = new Date(date)
-      const startOfDay = new Date(dateObj.setHours(0, 0, 0, 0))
-      const endOfDay = new Date(dateObj.setHours(23, 59, 59, 999))
-      where.date = {
-        gte: startOfDay,
-        lte: endOfDay,
+      try {
+        // Parse the date string (format: YYYY-MM-DD)
+        const [year, month, day] = date.split('-').map(Number)
+        if (year && month && day) {
+          const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+          const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
+          
+          where.date = {
+            gte: startOfDay,
+            lte: endOfDay,
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing date filter:', error)
       }
     }
 
@@ -125,15 +141,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify user is a driver
+    // Verify user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
     })
 
-    if (!user || user.role !== 'DRIVER') {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Only drivers can post trips' },
-        { status: 403 }
+        { error: 'User not found' },
+        { status: 404 }
       )
     }
 

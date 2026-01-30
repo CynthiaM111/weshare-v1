@@ -1,7 +1,18 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner";
+import dynamic from "next/dynamic";
+
+// Dynamically import Navigation to reduce initial bundle size
+const Navigation = dynamic(() => import("@/components/Navigation"), {
+  ssr: true,
+  loading: () => <div className="h-16 bg-white border-b border-gray-200" />,
+});
+
+// Dynamically import Toaster to reduce initial bundle size
+const Toaster = dynamic(() => import("sonner").then((mod) => mod.Toaster), {
+  ssr: false,
+});
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,8 +29,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <Navigation />
         {children}
-        <Toaster position="top-center" />
+        <Toaster position="top-center" closeButton richColors />
       </body>
     </html>
   );

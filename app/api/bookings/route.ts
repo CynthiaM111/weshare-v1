@@ -57,13 +57,93 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Calculate available seats
-    const bookedSeats = trip.bookings.reduce((sum, b) => sum + b.seats, 0)
+    // Check if trip date/time has passed
+    const tripDateTime = new Date(`${trip.date.toISOString().split('T')[0]}T${trip.time}`)
+    const now = new Date()
+    if (tripDateTime <= now) {
+      return NextResponse.json(
+        { error: 'Cannot book a trip that has already passed' },
+        { status: 400 }
+      )
+    }
+
+    // Check if user already has a booking for this trip
+    const existingBooking = await prisma.booking.findFirst({
+      where: {
+        tripId: validatedData.tripId,
+        userId,
+        status: {
+          in: ['PENDING', 'CONFIRMED'],
+        },
+      },
+    })
+
+    if (existingBooking) {
+      return NextResponse.json(
+        { error: 'You already have a booking for this trip' },
+        { status: 400 }
+      )
+    }
+
+    // Check if user has another booking at the same date/time
+    const conflictingBookings = await prisma.booking.findMany({
+      where: {
+        userId,
+        status: {
+          in: ['PENDING', 'CONFIRMED'],
+        },
+        trip: {
+          date: trip.date,
+          time: trip.time,
+        },
+      },
+      include: {
+        trip: true,
+      },
+    })
+
+    if (conflictingBookings.length > 0) {
+      const conflictingTrip = conflictingBookings[0].trip
+      return NextResponse.json(
+        { 
+          error: `You already have a booking for another trip on ${new Date(conflictingTrip.date).toLocaleDateString()} at ${conflictingTrip.time}` 
+        },
+        { status: 400 }
+      )
+    }
+
+    // Calculate available seats (including pending bookings to prevent overbooking)
+    const allBookings = await prisma.booking.findMany({
+      where: {
+        tripId: validatedData.tripId,
+        status: {
+          in: ['PENDING', 'CONFIRMED', 'COMPLETED'],
+        },
+      },
+    })
+    
+    const bookedSeats = allBookings.reduce((sum, b) => sum + b.seats, 0)
     const availableSeats = trip.availableSeats - bookedSeats
+
+    if (availableSeats <= 0) {
+      return NextResponse.json(
+        { error: 'This trip is fully booked. No seats available.' },
+        { status: 400 }
+      )
+    }
 
     if (validatedData.seats > availableSeats) {
       return NextResponse.json(
         { error: `Only ${availableSeats} seat(s) available` },
+        { status: 400 }
+      )
+    }
+
+    // Check minimum booking time (at least 1 hour before departure)
+    const hoursUntilTrip = (tripDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+    if (hoursUntilTrip < 1) {
+      return NextResponse.json(
+        { error: 'Bookings must be made at least 1 hour before departure' },
         { status: 400 }
       )
     }

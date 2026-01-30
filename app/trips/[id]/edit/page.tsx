@@ -1,14 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
-export default function NewTripPage() {
+export default function EditTripPage() {
   const router = useRouter()
+  const params = useParams()
+  const tripId = params.id as string
   const [loading, setLoading] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [fetchingTrip, setFetchingTrip] = useState(true)
   const [formData, setFormData] = useState({
     departCity: '',
     departLocation: '',
@@ -19,50 +22,88 @@ export default function NewTripPage() {
     availableSeats: 1,
     price: 0,
     carModel: '',
+    status: 'ACTIVE' as 'ACTIVE' | 'COMPLETED' | 'CANCELLED',
   })
 
-  // Check authentication on page load
+  // Check authentication and fetch trip data
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuthAndFetchTrip = async () => {
       try {
         const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
         if (!userStr) {
           toast.error('Please login first')
-          router.push('/login?redirect=/trips/new')
+          router.push(`/login?redirect=/trips/${tripId}/edit`)
           return
         }
-        // Verify the user data is valid JSON
+        
         const user = JSON.parse(userStr)
         if (!user || !user.id) {
-          // Invalid user data, clear it and redirect
           localStorage.removeItem('user')
           toast.error('Please login again')
-          router.push('/login?redirect=/trips/new')
+          router.push(`/login?redirect=/trips/${tripId}/edit`)
           return
         }
+
         setCheckingAuth(false)
+
+        // Fetch trip data
+        const response = await fetch(`/api/trips?id=${tripId}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch trip')
+        }
+
+        const data = await response.json()
+        if (data.length === 0) {
+          toast.error('Trip not found')
+          router.push('/my-trips')
+          return
+        }
+
+        const trip = data[0]
+
+        // Verify user is the owner
+        if (trip.driver.id !== user.id) {
+          toast.error('You can only edit your own trips')
+          router.push('/my-trips')
+          return
+        }
+
+        // Populate form with trip data
+        const tripDate = new Date(trip.date)
+        const dateStr = tripDate.toISOString().split('T')[0]
+        
+        setFormData({
+          departCity: trip.departCity,
+          departLocation: trip.departLocation,
+          destinationCity: trip.destinationCity,
+          destinationLocation: trip.destinationLocation,
+          date: dateStr,
+          time: trip.time,
+          availableSeats: trip.availableSeats,
+          price: trip.price,
+          carModel: trip.carModel,
+          status: trip.status,
+        })
+
+        setFetchingTrip(false)
       } catch (error) {
-        // If there's an error parsing user data, clear it and redirect
-        console.error('Error parsing user data:', error)
-        localStorage.removeItem('user')
-        toast.error('Please login again')
-        router.push('/login?redirect=/trips/new')
+        console.error('Error:', error)
+        toast.error('Failed to load trip')
+        router.push('/my-trips')
       }
     }
 
-    // Small delay to ensure localStorage is ready
-    const timer = setTimeout(checkAuth, 100)
+    const timer = setTimeout(checkAuthAndFetchTrip, 100)
     return () => clearTimeout(timer)
-  }, [router])
+  }, [router, tripId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Check if user is logged in
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
     if (!userStr) {
       toast.error('Please login first')
-      router.push('/login?redirect=/trips/new')
+      router.push(`/login?redirect=/trips/${tripId}/edit`)
       return
     }
 
@@ -70,8 +111,8 @@ export default function NewTripPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/trips', {
-        method: 'POST',
+      const response = await fetch(`/api/trips/${tripId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'x-user-id': user.id,
@@ -82,19 +123,19 @@ export default function NewTripPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create trip')
+        throw new Error(data.error || 'Failed to update trip')
       }
 
-      toast.success('Trip posted successfully!')
-      router.push('/trips')
+      toast.success('Trip updated successfully!')
+      router.push('/my-trips')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create trip')
+      toast.error(error instanceof Error ? error.message : 'Failed to update trip')
     } finally {
       setLoading(false)
     }
   }
 
-  if (checkingAuth) {
+  if (checkingAuth || fetchingTrip) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg text-gray-900">Loading...</div>
@@ -105,7 +146,7 @@ export default function NewTripPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-gray-900">Post a New Trip</h1>
+        <h1 className="text-3xl font-bold mb-6 text-gray-900">Edit Trip</h1>
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-4 border border-gray-200">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -203,16 +244,30 @@ export default function NewTripPage() {
               />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Car Model</label>
-            <input
-              type="text"
-              value={formData.carModel}
-              onChange={(e) => setFormData({ ...formData, carModel: e.target.value })}
-              placeholder="Toyota Corolla"
-              required
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none placeholder:text-gray-500"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Car Model</label>
+              <input
+                type="text"
+                value={formData.carModel}
+                onChange={(e) => setFormData({ ...formData, carModel: e.target.value })}
+                placeholder="Toyota Corolla"
+                required
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none placeholder:text-gray-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'ACTIVE' | 'COMPLETED' | 'CANCELLED' })}
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
           </div>
           <div className="flex gap-4">
             <button
@@ -220,10 +275,10 @@ export default function NewTripPage() {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? 'Posting...' : 'Post Trip'}
+              {loading ? 'Updating...' : 'Update Trip'}
             </button>
             <Link
-              href="/trips"
+              href="/my-trips"
               className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 text-center"
             >
               Cancel
@@ -234,4 +289,3 @@ export default function NewTripPage() {
     </div>
   )
 }
-

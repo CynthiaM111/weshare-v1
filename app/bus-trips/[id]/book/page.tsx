@@ -79,7 +79,7 @@ export default function BookBusTicketPage() {
       }
 
       toast.success('Ticket booked successfully!')
-      router.push('/bookings')
+      router.push('/bookings?success=true')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to book ticket')
     } finally {

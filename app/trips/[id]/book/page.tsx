@@ -36,9 +36,11 @@ export default function BookTripPage() {
   const [seats, setSeats] = useState(1)
   const [loading, setLoading] = useState(true)
   const [booking, setBooking] = useState(false)
+  const [userBookings, setUserBookings] = useState<any[]>([])
 
   useEffect(() => {
     fetchTrip()
+    fetchUserBookings()
   }, [tripId])
 
   const fetchTrip = async () => {
@@ -53,6 +55,26 @@ export default function BookTripPage() {
       toast.error('Failed to load trip')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUserBookings = async () => {
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+    if (!userStr) return
+
+    const user = JSON.parse(userStr)
+    try {
+      const response = await fetch('/api/bookings', {
+        headers: {
+          'x-user-id': user.id,
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setUserBookings(data)
+      }
+    } catch (error) {
+      console.error('Error fetching user bookings:', error)
     }
   }
 
@@ -88,7 +110,7 @@ export default function BookTripPage() {
       }
 
       toast.success('Booking created! Waiting for driver confirmation.')
-      router.push('/bookings')
+      router.push('/bookings?success=true')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create booking')
     } finally {
@@ -122,6 +144,75 @@ export default function BookTripPage() {
     .reduce((sum, b) => sum + b.seats, 0)
   const remainingSeats = trip.availableSeats - bookedSeats
 
+  // Check if trip has passed - handle date properly
+  // trip.date comes as ISO string from API (e.g., "2024-01-15T00:00:00.000Z")
+  // Extract just the date part (YYYY-MM-DD)
+  let dateStr: string
+  if (typeof trip.date === 'string') {
+    dateStr = trip.date.split('T')[0]
+  } else {
+    // If it's a Date object (shouldn't happen from API, but handle it)
+    dateStr = new Date(trip.date).toISOString().split('T')[0]
+  }
+  
+  // Combine date and time, ensuring proper format
+  // trip.time should be in HH:MM format (e.g., "14:30")
+  const tripDateTimeStr = `${dateStr}T${trip.time}:00`
+  const tripDateTime = new Date(tripDateTimeStr)
+  
+  // Check if date is valid
+  const isValidDate = !isNaN(tripDateTime.getTime())
+  
+  const now = new Date()
+  // Only check hasPassed and canBook if date is valid
+  // If date is invalid, allow booking (backend will validate)
+  const hasPassed = isValidDate ? tripDateTime <= now : false
+  const hoursUntilTrip = isValidDate ? (tripDateTime.getTime() - now.getTime()) / (1000 * 60 * 60) : Infinity
+  const canBook = isValidDate ? hoursUntilTrip >= 1 : true
+
+  // Check if user already has a booking for this trip (only if user is logged in)
+  const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+  const isLoggedIn = !!userStr
+  const currentUserId = userStr ? JSON.parse(userStr).id : null
+  
+  // Check if user is the driver of this trip
+  const isOwnTrip = currentUserId && trip.driver.id === currentUserId
+  
+  const hasExistingBooking = isLoggedIn && userBookings.some(
+    (b) => b.trip?.id === tripId && (b.status === 'PENDING' || b.status === 'CONFIRMED')
+  )
+
+  // Check if user has conflicting booking (same date/time) - only if logged in
+  const hasConflictingBooking = isLoggedIn && userBookings.some(
+    (b) => {
+      if (!b.trip || (b.status !== 'PENDING' && b.status !== 'CONFIRMED')) return false
+      const bookingDateStr = typeof b.trip.date === 'string' 
+        ? b.trip.date.split('T')[0] 
+        : new Date(b.trip.date).toISOString().split('T')[0]
+      const tripDateStr = dateStr
+      return bookingDateStr === tripDateStr && 
+             b.trip.time === trip.time &&
+             b.trip.id !== tripId
+    }
+  )
+
+  // Only disable if:
+  // - Currently booking
+  // - No seats available
+  // - Invalid seat selection
+  // - Trip has passed (for everyone)
+  // - Can't book (less than 1 hour - for everyone)
+  // - User is the driver (own trip)
+  // - User has existing/conflicting booking (only if logged in)
+  const isDisabled = booking || 
+                     remainingSeats === 0 || 
+                     seats > remainingSeats || 
+                     seats < 1 ||
+                     hasPassed || 
+                     !canBook ||
+                     isOwnTrip ||
+                     (isLoggedIn && (hasExistingBooking || hasConflictingBooking))
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
@@ -140,6 +231,32 @@ export default function BookTripPage() {
             <p className="text-xl font-bold text-blue-700">
               Price: RWF {trip.price.toLocaleString()} per seat
             </p>
+            {hasPassed && (
+              <p className="text-red-600 font-semibold mt-2">⚠️ This trip has already passed</p>
+            )}
+            {!hasPassed && !canBook && (
+              <p className="text-red-600 font-semibold mt-2">⚠️ Bookings must be made at least 1 hour before departure</p>
+            )}
+            {remainingSeats === 0 && (
+              <p className="text-red-600 font-semibold mt-2">⚠️ This trip is fully booked</p>
+            )}
+            {isOwnTrip && (
+              <p className="text-purple-600 font-semibold mt-2">⚠️ This is your own trip. You cannot book it.</p>
+            )}
+            {/* Debug info - remove in production */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                <p>Debug: Trip Date/Time: {tripDateTime.toLocaleString()}</p>
+                <p>Debug: Current Time: {now.toLocaleString()}</p>
+                <p>Debug: Has Passed: {hasPassed ? 'Yes' : 'No'}</p>
+                <p>Debug: Hours Until Trip: {hoursUntilTrip.toFixed(2)}</p>
+                <p>Debug: Can Book: {canBook ? 'Yes' : 'No'}</p>
+                <p>Debug: Remaining Seats: {remainingSeats}</p>
+                <p>Debug: Has Existing Booking: {hasExistingBooking ? 'Yes' : 'No'}</p>
+                <p>Debug: Has Conflicting Booking: {hasConflictingBooking ? 'Yes' : 'No'}</p>
+                <p>Debug: Is Disabled: {isDisabled ? 'Yes' : 'No'}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -160,6 +277,20 @@ export default function BookTripPage() {
                 Maximum {remainingSeats} seat(s) available
               </p>
             </div>
+            {(hasExistingBooking || hasConflictingBooking) && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                {hasExistingBooking && (
+                  <p className="text-yellow-800 font-semibold mb-2">
+                    ⚠️ You already have a booking for this trip
+                  </p>
+                )}
+                {hasConflictingBooking && (
+                  <p className="text-yellow-800 font-semibold">
+                    ⚠️ You already have a booking for another trip at the same date and time
+                  </p>
+                )}
+              </div>
+            )}
             <div className="border-t border-gray-300 pt-4">
               <div className="flex justify-between mb-2 text-gray-800">
                 <span className="font-medium">Price per seat:</span>
@@ -173,7 +304,7 @@ export default function BookTripPage() {
             <div className="flex gap-4">
               <button
                 onClick={handleBook}
-                disabled={booking || remainingSeats === 0 || seats > remainingSeats}
+                disabled={isDisabled}
                 className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {booking ? 'Booking...' : 'Confirm Booking'}

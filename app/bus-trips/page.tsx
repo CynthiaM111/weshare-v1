@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
 interface BusTrip {
@@ -26,8 +26,9 @@ interface BusTrip {
   }>
 }
 
-export default function BusTripsPage() {
+function BusTripsPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [trips, setTrips] = useState<BusTrip[]>([])
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
@@ -36,6 +37,37 @@ export default function BusTripsPage() {
     destinationCity: '',
     date: '',
   })
+
+  // Sync filters from URL when searchParams change (e.g. coming from home page)
+  useEffect(() => {
+    const depart = searchParams.get('departCity') || ''
+    const dest = searchParams.get('destinationCity') || ''
+    const date = searchParams.get('date') || ''
+    setFilters({ departCity: depart, destinationCity: dest, date })
+    if (depart || dest || date) {
+      setHasSearched(true)
+      setLoading(true)
+      fetchTripsWithParams({ departCity: depart, destinationCity: dest, date })
+    }
+  }, [searchParams.toString()])
+
+  const fetchTripsWithParams = async (filterValues: typeof filters) => {
+    try {
+      const params = new URLSearchParams()
+      if (filterValues.departCity) params.append('departCity', filterValues.departCity)
+      if (filterValues.destinationCity) params.append('destinationCity', filterValues.destinationCity)
+      if (filterValues.date) params.append('date', filterValues.date)
+      params.append('status', 'ACTIVE')
+      const response = await fetch(`/api/bus-trips?${params.toString()}`)
+      const data = await response.json()
+      setTrips(data)
+    } catch (error) {
+      console.error('Error fetching bus trips:', error)
+      toast.error('Failed to load bus trips')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchTrips = async () => {
     try {
@@ -208,3 +240,14 @@ export default function BusTripsPage() {
   )
 }
 
+export default function BusTripsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
+      </div>
+    }>
+      <BusTripsPageContent />
+    </Suspense>
+  )
+}

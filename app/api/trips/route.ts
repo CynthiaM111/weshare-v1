@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               phone: true,
+              driverVerified: true,
             },
           },
           bookings: {
@@ -130,7 +131,31 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(activeTrips)
+    // Enrich with driverVerified via raw SQL (avoids Prisma client cache issues)
+    const driverIds = [...new Set(activeTrips.map((t) => t.driverId))]
+    let driverVerifiedMap: Record<string, boolean> = {}
+    if (driverIds.length > 0) {
+      try {
+        const placeholders = driverIds.map((_, i) => `$${i + 1}`).join(',')
+        const result = await prisma.$queryRawUnsafe<Array<{ id: string; driverVerified: boolean }>>(
+          `SELECT id, "driverVerified" FROM "User" WHERE id IN (${placeholders})`,
+          ...driverIds
+        )
+        driverVerifiedMap = Object.fromEntries(result.map((r) => [r.id, r.driverVerified]))
+      } catch (e) {
+        console.error('Error fetching driver verification:', e)
+      }
+    }
+
+    const enrichedTrips = activeTrips.map((trip) => ({
+      ...trip,
+      driver: {
+        ...trip.driver,
+        driverVerified: driverVerifiedMap[trip.driverId] ?? false,
+      },
+    }))
+
+    return NextResponse.json(enrichedTrips)
   } catch (error) {
     console.error('Error fetching trips:', error)
     return NextResponse.json(
@@ -154,15 +179,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    })
+    // Verify user exists and is driver-verified (raw SQL to avoid Prisma client cache issues)
+    const userResult = await prisma.$queryRaw<Array<{ driverVerified: boolean }>>`
+      SELECT "driverVerified" FROM "User" WHERE id = ${userId}
+    `
+    const user = userResult[0]
 
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
+      )
+    }
+
+    if (!user.driverVerified) {
+      return NextResponse.json(
+        {
+          error: 'Driver verification required. Please complete verification before posting trips.',
+          code: 'VERIFICATION_REQUIRED',
+        },
+        { status: 403 }
       )
     }
 

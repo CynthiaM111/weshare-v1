@@ -93,6 +93,7 @@ export async function PATCH(
             id: true,
             name: true,
             phone: true,
+            driverVerified: true,
           },
         },
         bookings: {

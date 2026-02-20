@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { VerifiedBadge } from '@/components/VerifiedBadge'
 
 interface Trip {
   id: string
@@ -20,6 +21,7 @@ interface Trip {
     id: string
     name: string
     phone: string
+    driverVerified?: boolean
   }
   bookings: Array<{
     id: string
@@ -226,7 +228,11 @@ export default function BookTripPage() {
             <p className="text-gray-800"><span className="font-semibold text-gray-900">Date:</span> {new Date(trip.date).toLocaleDateString()}</p>
             <p className="text-gray-800"><span className="font-semibold text-gray-900">Time:</span> {trip.time}</p>
             <p className="text-gray-800"><span className="font-semibold text-gray-900">Car:</span> {trip.carModel}</p>
-            <p className="text-gray-800"><span className="font-semibold text-gray-900">Driver:</span> {trip.driver.name}</p>
+            <p className="text-gray-800 flex items-center gap-1.5">
+              <span className="font-semibold text-gray-900">Driver:</span>
+              {trip.driver.name}
+              {trip.driver.driverVerified && <VerifiedBadge />}
+            </p>
             <p className="text-gray-800"><span className="font-semibold text-gray-900">Available Seats:</span> {remainingSeats}</p>
             <p className="text-xl font-bold text-blue-700">
               Price: RWF {trip.price.toLocaleString()} per seat

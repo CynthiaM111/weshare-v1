@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { VerifiedBadge } from '@/components/VerifiedBadge'
 
 interface Booking {
   id: string
@@ -32,6 +33,7 @@ interface Trip {
   status: string
   createdAt: string
   bookings: Booking[]
+  driver?: { id: string; name: string; phone: string; driverVerified?: boolean }
 }
 
 export default function MyTripsPage() {
@@ -271,7 +273,7 @@ export default function MyTripsPage() {
                           {trip.departLocation} → {trip.destinationLocation}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={`px-3 py-1.5 rounded-full text-xs font-bold ${
                             trip.status === 'ACTIVE'
@@ -283,6 +285,7 @@ export default function MyTripsPage() {
                         >
                           {trip.status}
                         </span>
+                        {trip.driver?.driverVerified && <VerifiedBadge />}
                         <Link
                           href={`/trips/${trip.id}/edit`}
                           className="px-4 py-1.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold transition-all shadow-sm hover:shadow-md"

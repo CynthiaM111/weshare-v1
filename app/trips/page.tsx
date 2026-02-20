@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
+import { VerifiedBadge } from '@/components/VerifiedBadge'
 
 interface Trip {
   id: string
@@ -21,6 +22,7 @@ interface Trip {
     id: string
     name: string
     phone: string
+    driverVerified?: boolean
   }
   bookings: Array<{
     id: string
@@ -29,8 +31,9 @@ interface Trip {
   }>
 }
 
-export default function TripsPage() {
+function TripsPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [trips, setTrips] = useState<Trip[]>([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -41,6 +44,18 @@ export default function TripsPage() {
     destinationCity: '',
     date: '',
   })
+
+  // Sync filters from URL when searchParams change (e.g. coming from home page)
+  useEffect(() => {
+    const depart = searchParams.get('departCity') || ''
+    const dest = searchParams.get('destinationCity') || ''
+    const date = searchParams.get('date') || ''
+    setFilters({ departCity: depart, destinationCity: dest, date })
+    if (depart || dest || date) {
+      setHasSearched(true)
+      fetchTripsWithFilters({ departCity: depart, destinationCity: dest, date })
+    }
+  }, [searchParams.toString()])
 
   useEffect(() => {
     // Get current user ID only
@@ -420,7 +435,10 @@ export default function TripsPage() {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500 mb-1">Driver</p>
-                            <p className="text-sm font-semibold text-gray-900">{trip.driver.name}</p>
+                            <p className="text-sm font-semibold text-gray-900 flex items-center justify-end gap-1.5">
+                              {trip.driver.name}
+                              {trip.driver.driverVerified && <VerifiedBadge />}
+                            </p>
                           </div>
                         </div>
 
@@ -466,3 +484,14 @@ export default function TripsPage() {
   )
 }
 
+export default function TripsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    }>
+      <TripsPageContent />
+    </Suspense>
+  )
+}

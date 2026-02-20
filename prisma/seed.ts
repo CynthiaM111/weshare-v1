@@ -53,7 +53,7 @@ async function main() {
   const passengers: any[] = []
   const agencies: any[] = []
 
-  // Create drivers (8-10)
+  // Create drivers (8-10) - seed with verification for existing drivers
   for (let i = 0; i < 9; i++) {
     const driver = await prisma.user.create({
       data: {
@@ -61,6 +61,10 @@ async function main() {
         name: generateRwandanName(),
         role: UserRole.DRIVER,
         phoneVerified: true,
+        driverVerified: true,
+        nationalId: `1199${String(i).padStart(10, '0')}`,
+        drivingLicenseNumber: `DL-${100000 + i}`,
+        licensePlate: `RAB ${100 + i} ${String.fromCharCode(65 + (i % 26))}`,
       },
     })
     drivers.push(driver)

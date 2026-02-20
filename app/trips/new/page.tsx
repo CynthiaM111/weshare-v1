@@ -9,6 +9,7 @@ export default function NewTripPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [verificationRequired, setVerificationRequired] = useState(false)
   const [formData, setFormData] = useState({
     departCity: '',
     departLocation: '',
@@ -21,9 +22,9 @@ export default function NewTripPage() {
     carModel: '',
   })
 
-  // Check authentication on page load
+  // Check authentication and driver verification on page load
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
         const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
         if (!userStr) {
@@ -31,18 +32,25 @@ export default function NewTripPage() {
           router.push('/login?redirect=/trips/new')
           return
         }
-        // Verify the user data is valid JSON
         const user = JSON.parse(userStr)
         if (!user || !user.id) {
-          // Invalid user data, clear it and redirect
           localStorage.removeItem('user')
           toast.error('Please login again')
           router.push('/login?redirect=/trips/new')
           return
         }
+        // Check driver verification status
+        const res = await fetch('/api/driver/verification', {
+          headers: { 'x-user-id': user.id },
+        })
+        const data = await res.json()
+        if (!data.driverVerified) {
+          setVerificationRequired(true)
+          setCheckingAuth(false)
+          return
+        }
         setCheckingAuth(false)
       } catch (error) {
-        // If there's an error parsing user data, clear it and redirect
         console.error('Error parsing user data:', error)
         localStorage.removeItem('user')
         toast.error('Please login again')
@@ -50,7 +58,6 @@ export default function NewTripPage() {
       }
     }
 
-    // Small delay to ensure localStorage is ready
     const timer = setTimeout(checkAuth, 100)
     return () => clearTimeout(timer)
   }, [router])
@@ -82,6 +89,11 @@ export default function NewTripPage() {
       const data = await response.json()
 
       if (!response.ok) {
+        if (response.status === 403 && data.code === 'VERIFICATION_REQUIRED') {
+          setVerificationRequired(true)
+          toast.error(data.error || 'Driver verification required')
+          return
+        }
         throw new Error(data.error || 'Failed to create trip')
       }
 
@@ -98,6 +110,48 @@ export default function NewTripPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg text-gray-900">Loading...</div>
+      </div>
+    )
+  }
+
+  if (verificationRequired) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Driver Verification Required</h2>
+                <p className="text-gray-700 mb-4">
+                  You need to verify your driver information before you can post carpooling trips. This helps keep our community safe.
+                </p>
+                <p className="text-gray-600 text-sm mb-4">
+                  Please provide your National ID number, driving license number, and license plate to complete verification.
+                </p>
+                <Link
+                  href="/driver/verify"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
+                >
+                  Get Verified
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </div>
+          <Link
+            href="/trips"
+            className="text-gray-600 hover:text-gray-900 font-medium"
+          >
+            ← Back to Available Trips
+          </Link>
+        </div>
       </div>
     )
   }

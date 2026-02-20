@@ -49,6 +49,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Driver verification (required to post carpooling trips)
+  driverVerified       Boolean  @default(false)
+  nationalId           String?
+  drivingLicenseNumber String?
+  licensePlate         String?
+
   // Relations
   tripsAsDriver    Trip[]           @relation("DriverTrips")
   bookings         Booking[]        @relation("PassengerBookings")

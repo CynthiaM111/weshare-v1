@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         select: { status: true },
       })
       isVerified = isVerified || latest?.status === 'APPROVED'
-    } else if (user.role === 'ADMIN') {
+    } else if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
       isVerified = true
     }
 

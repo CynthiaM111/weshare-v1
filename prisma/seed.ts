@@ -55,16 +55,16 @@ async function main() {
   const passengers: any[] = []
   const agencies: any[] = []
 
-  // Create admin user (login: +250788000000)
-  const admin = await prisma.user.create({
+  // Create super admin (login: +250788000000) - can create other admins
+  const superAdmin = await prisma.user.create({
     data: {
       phone: '+250788000000',
-      name: 'Admin User',
-      role: UserRole.ADMIN,
+      name: 'Super Admin',
+      role: UserRole.SUPER_ADMIN,
       phoneVerified: true,
     },
   })
-  console.log(`✅ Admin created: ${admin.phone} (use this to access /admin/verification)`)
+  console.log(`✅ Super Admin created: ${superAdmin.phone} (login → /admin/super to manage admins)`)
 
   // Create drivers (8-10) - seed with verification for existing drivers
   for (let i = 0; i < 9; i++) {

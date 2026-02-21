@@ -87,7 +87,7 @@ export default function AdminVerificationDetailPage() {
       return
     }
     const user = JSON.parse(userStr)
-    if (user?.role !== 'ADMIN') {
+    if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
       router.push('/')
       return
     }

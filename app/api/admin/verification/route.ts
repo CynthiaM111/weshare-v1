@@ -12,7 +12,7 @@ async function requireAdmin(request: NextRequest) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
   })
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
   return { adminId: userId }

@@ -171,8 +171,28 @@ export default function Navigation() {
               </svg>
             </Link>
             <div className="hidden md:flex md:items-center md:space-x-1">
-              {user?.role === 'ADMIN' ? (
+              {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
                 <>
+                  {user?.role === 'SUPER_ADMIN' && (
+                    <Link
+                      href="/admin/super"
+                      className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                        pathname?.startsWith('/admin/super')
+                          ? 'text-amber-600 bg-amber-50'
+                          : 'text-gray-700 hover:text-amber-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Manage Admins
+                      </span>
+                      {pathname?.startsWith('/admin/super') && (
+                        <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-amber-600 rounded-full"></span>
+                      )}
+                    </Link>
+                  )}
                   <Link
                     href="/admin/verification"
                     className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
@@ -337,7 +357,7 @@ export default function Navigation() {
                 >
                     <div className="flex items-center space-x-2">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md overflow-hidden shrink-0 ${
-                      !user.profileImageUrl && (user.role === 'ADMIN'
+                      !user.profileImageUrl && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
                         ? 'bg-gradient-to-br from-amber-500 to-orange-600'
                         : 'bg-gradient-to-br from-blue-600 to-indigo-600')
                     }`}>

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     // Access control: driver can view own; admin can view all
     const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null
     const isOwner = userId === submission.userId
-    const isAdmin = user?.role === 'ADMIN'
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

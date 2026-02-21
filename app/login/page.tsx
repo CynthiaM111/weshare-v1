@@ -71,7 +71,11 @@ function LoginForm() {
         router.push(redirect)
       } else {
         // Redirect based on role
-        if (data.user.role === 'DRIVER') {
+        if (data.user.role === 'SUPER_ADMIN') {
+          router.push('/admin/super')
+        } else if (data.user.role === 'ADMIN') {
+          router.push('/admin/verification')
+        } else if (data.user.role === 'DRIVER') {
           router.push('/driver')
         } else if (data.user.role === 'AGENCY') {
           router.push('/agency')

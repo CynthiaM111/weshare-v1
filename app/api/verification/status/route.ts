@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Admin users are always verified
-    if (user?.role === 'ADMIN') {
+    if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
       return NextResponse.json({
         status: 'APPROVED',
         isApproved: true,

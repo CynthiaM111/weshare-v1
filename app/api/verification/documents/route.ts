@@ -64,13 +64,10 @@ export async function GET(request: NextRequest) {
     }
     const contentType = contentTypeMap[ext] || 'application/octet-stream'
 
-    // Convert Node Buffer to ArrayBuffer for Fetch API compatibility
-    const arrayBuffer = buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength
-    )
+    // Convert Node Buffer to Uint8Array for Fetch API compatibility (BodyInit)
+    const body = new Uint8Array(buffer)
 
-    return new NextResponse(arrayBuffer, {
+    return new NextResponse(body, {
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'private, max-age=3600',

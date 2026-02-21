@@ -38,13 +38,10 @@ export async function GET(
     }
     const contentType = contentTypeMap[ext] || 'image/jpeg'
 
-    // Convert Node Buffer to ArrayBuffer for Fetch API compatibility
-    const arrayBuffer = buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength
-    )
+    // Convert Node Buffer to Uint8Array for Fetch API compatibility (BodyInit)
+    const body = new Uint8Array(buffer)
 
-    return new NextResponse(arrayBuffer, {
+    return new NextResponse(body, {
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=60',

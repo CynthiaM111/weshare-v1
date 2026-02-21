@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    if (!fileExists(normalizedPath)) {
+    if (!(await fileExists(normalizedPath))) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 

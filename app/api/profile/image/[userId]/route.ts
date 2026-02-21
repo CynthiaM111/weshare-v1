@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: 'No profile image' }, { status: 404 })
     }
 
-    if (!profileFileExists(profileImageUrl)) {
+    if (!(await profileFileExists(profileImageUrl))) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 

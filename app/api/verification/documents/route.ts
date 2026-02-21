@@ -64,7 +64,13 @@ export async function GET(request: NextRequest) {
     }
     const contentType = contentTypeMap[ext] || 'application/octet-stream'
 
-    return new NextResponse(buffer, {
+    // Convert Node Buffer to ArrayBuffer for Fetch API compatibility
+    const arrayBuffer = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    )
+
+    return new NextResponse(arrayBuffer, {
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'private, max-age=3600',

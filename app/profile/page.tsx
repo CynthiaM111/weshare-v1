@@ -44,7 +44,7 @@ export default function ProfilePage() {
             localStorage.setItem('user', JSON.stringify({ ...userData, ...profile }))
           }
         }
-      } catch (_) {}
+      } catch (_) { }
       setLoading(false)
     }
     loadProfile()

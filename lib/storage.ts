@@ -30,7 +30,7 @@ function getS3Client(): S3Client | null {
     return _s3Client
 }
 
-function useS3(): boolean {
+function isS3Enabled(): boolean {
     return getS3Client() !== null
 }
 
@@ -40,7 +40,7 @@ export function getStoragePath(userId: string, submissionId: string, filename: s
 }
 
 export async function ensureDir(filePath: string): Promise<void> {
-    if (useS3()) return // S3 has no directories, keys are flat
+    if (isS3Enabled()) return // S3 has no directories, keys are flat
     const dir = path.dirname(filePath)
     await fs.promises.mkdir(dir, { recursive: true })
 }
@@ -53,7 +53,7 @@ export async function saveFile(
 ): Promise<string> {
     const key = `driver-verification/${userId}/${submissionId}/${filename}`
 
-    if (useS3()) {
+    if (isS3Enabled()) {
         const client = getS3Client()!
         await client.send(
             new PutObjectCommand({
@@ -73,7 +73,7 @@ export async function saveFile(
 }
 
 export async function readFile(relativePath: string): Promise<Buffer> {
-    if (useS3()) {
+    if (isS3Enabled()) {
         const key = `driver-verification/${relativePath}`
         const client = getS3Client()!
         const res = await client.send(
@@ -88,7 +88,7 @@ export async function readFile(relativePath: string): Promise<Buffer> {
 }
 
 export async function fileExists(relativePath: string): Promise<boolean> {
-    if (useS3()) {
+    if (isS3Enabled()) {
         try {
             const client = getS3Client()!
             const key = `driver-verification/${relativePath}`
@@ -115,7 +115,7 @@ export async function saveProfileImage(userId: string, buffer: Buffer, ext: stri
     const filename = `${userId}.${ext}`
     const key = `profile/${filename}`
 
-    if (useS3()) {
+    if (isS3Enabled()) {
         const client = getS3Client()!
         await client.send(
             new PutObjectCommand({
@@ -134,7 +134,7 @@ export async function saveProfileImage(userId: string, buffer: Buffer, ext: stri
 }
 
 export async function readProfileFile(relativePath: string): Promise<Buffer> {
-    if (useS3()) {
+    if (isS3Enabled()) {
         const key = relativePath
         const client = getS3Client()!
         const res = await client.send(
@@ -149,7 +149,7 @@ export async function readProfileFile(relativePath: string): Promise<Buffer> {
 }
 
 export async function profileFileExists(relativePath: string): Promise<boolean> {
-    if (useS3()) {
+    if (isS3Enabled()) {
         try {
             const client = getS3Client()!
             await client.send(

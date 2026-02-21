@@ -39,12 +39,12 @@ export default function NewTripPage() {
           router.push('/login?redirect=/trips/new')
           return
         }
-        // Check driver verification status
-        const res = await fetch('/api/driver/verification', {
+        // Check driver verification status (new + legacy)
+        const res = await fetch('/api/verification/status', {
           headers: { 'x-user-id': user.id },
         })
         const data = await res.json()
-        if (!data.driverVerified) {
+        if (!data.isApproved) {
           setVerificationRequired(true)
           setCheckingAuth(false)
           return

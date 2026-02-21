@@ -38,6 +38,8 @@ async function main() {
 
   // Clear existing data
   console.log('🧹 Cleaning existing data...')
+  await prisma.verificationAuditLog.deleteMany()
+  await prisma.driverVerificationSubmission.deleteMany()
   await prisma.payment.deleteMany()
   await prisma.message.deleteMany()
   await prisma.ticketBooking.deleteMany()
@@ -52,6 +54,17 @@ async function main() {
   const drivers: any[] = []
   const passengers: any[] = []
   const agencies: any[] = []
+
+  // Create admin user (login: +250788000000)
+  const admin = await prisma.user.create({
+    data: {
+      phone: '+250788000000',
+      name: 'Admin User',
+      role: UserRole.ADMIN,
+      phoneVerified: true,
+    },
+  })
+  console.log(`✅ Admin created: ${admin.phone} (use this to access /admin/verification)`)
 
   // Create drivers (8-10) - seed with verification for existing drivers
   for (let i = 0; i < 9; i++) {

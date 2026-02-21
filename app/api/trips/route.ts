@@ -179,11 +179,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify user exists and is driver-verified (raw SQL to avoid Prisma client cache issues)
-    const userResult = await prisma.$queryRaw<Array<{ driverVerified: boolean }>>`
-      SELECT "driverVerified" FROM "User" WHERE id = ${userId}
-    `
+    // Verify user exists and is driver-verified
+    const [userResult, latestSubmission] = await Promise.all([
+      prisma.$queryRaw<Array<{ driverVerified: boolean }>>`
+        SELECT "driverVerified" FROM "User" WHERE id = ${userId}
+      `,
+      prisma.driverVerificationSubmission.findFirst({
+        where: { userId },
+        orderBy: { version: 'desc' },
+        select: { status: true },
+      }),
+    ])
     const user = userResult[0]
+    const isNewApproved = latestSubmission?.status === 'APPROVED'
+    const isLegacyApproved = user?.driverVerified ?? false
+    const isVerified = isNewApproved || isLegacyApproved
 
     if (!user) {
       return NextResponse.json(
@@ -192,7 +202,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!user.driverVerified) {
+    if (!isVerified) {
       return NextResponse.json(
         {
           error: 'Driver verification required. Please complete verification before posting trips.',

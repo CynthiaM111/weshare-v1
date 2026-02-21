@@ -1,4 +1,4 @@
-export function VerifiedBadge({ className = '' }: { className?: string }) {
+export default function VerifiedBadge({ className = '' }: { className?: string }) {
   return (
     <span
       className={`inline-flex items-center gap-1 text-xs text-emerald-600 ${className}`}

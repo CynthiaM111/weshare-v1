@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 interface User {
   id: string
@@ -10,24 +11,84 @@ interface User {
   name: string
   role: string
   phoneVerified: boolean
+  profileImageUrl?: string | null
+  isVerified?: boolean
 }
 
 export default function ProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
-    if (!userStr) {
-      router.push('/login?redirect=/profile')
+    const loadProfile = async () => {
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+      if (!userStr) {
+        router.push('/login?redirect=/profile')
+        return
+      }
+
+      const userData = JSON.parse(userStr)
+      setUser(userData)
+
+      try {
+        const res = await fetch('/api/profile', {
+          headers: { 'x-user-id': userData.id },
+        })
+        if (res.ok) {
+          const profile = await res.json()
+          setUser((prev) => prev ? { ...prev, ...profile } : null)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('user', JSON.stringify({ ...userData, ...profile }))
+          }
+        }
+      } catch (_) {}
+      setLoading(false)
+    }
+    loadProfile()
+  }, [router])
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Please use JPEG, PNG, or WebP')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB')
       return
     }
 
-    const userData = JSON.parse(userStr)
-    setUser(userData)
-    setLoading(false)
-  }, [router])
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/profile/image', {
+        method: 'POST',
+        headers: { 'x-user-id': user.id },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+
+      const profileImageUrl = data.profileImageUrl
+      setUser((prev) => prev ? { ...prev, profileImageUrl } : null)
+      if (typeof window !== 'undefined') {
+        const stored = JSON.parse(localStorage.getItem('user') || '{}')
+        localStorage.setItem('user', JSON.stringify({ ...stored, profileImageUrl }))
+        window.dispatchEvent(new CustomEvent('userLogin'))
+      }
+      toast.success('Profile picture updated!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
 
   if (loading) {
     return (
@@ -61,12 +122,55 @@ export default function ProfilePage() {
 
         <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-6">
           <div className="flex items-center space-x-4 mb-6">
-            <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-              {user.name.charAt(0).toUpperCase()}
+            <div className="relative group">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-600 shrink-0">
+                {user.profileImageUrl ? (
+                  <img src={`/api/profile/image/${user.id}`} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  user.name.charAt(0).toUpperCase()
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                title="Update profile picture"
+              >
+                {uploading ? (
+                  <span className="text-xs font-medium">Uploading...</span>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
               <p className="text-gray-700">{getRoleDisplay(user.role)}</p>
+              <p className={`text-sm font-medium mt-1 ${user.isVerified ? 'text-emerald-600' : 'text-gray-500'}`}>
+                {user.isVerified ? 'Verified' : 'Not verified'}
+              </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium mt-1"
+                title="Update profile picture"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                {uploading ? 'Uploading...' : 'Update profile picture'}
+              </button>
             </div>
           </div>
 

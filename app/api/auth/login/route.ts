@@ -39,6 +39,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Fetch verification status (raw SQL for driverVerified to avoid caching)
+    const driverRows = await prisma.$queryRaw<{ driverVerified: boolean }[]>`
+      SELECT "driverVerified" FROM "User" WHERE id = ${user.id}
+    `
+    let isVerified = !!driverRows[0]?.driverVerified
+    if (user.role === 'DRIVER') {
+      const latest = await prisma.driverVerificationSubmission.findFirst({
+        where: { userId: user.id },
+        orderBy: { version: 'desc' },
+        select: { status: true },
+      })
+      isVerified = isVerified || latest?.status === 'APPROVED'
+    } else if (user.role === 'ADMIN') {
+      isVerified = true
+    }
+
     return NextResponse.json({
       user: {
         id: user.id,
@@ -46,6 +62,8 @@ export async function POST(request: NextRequest) {
         name: user.name,
         role: user.role,
         phoneVerified: true,
+        profileImageUrl: user.profileImageUrl ?? null,
+        isVerified: !!isVerified,
       },
       message: 'In the future, an OTP will be sent to this phone number for verification',
     })

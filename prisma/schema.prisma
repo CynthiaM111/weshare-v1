@@ -14,6 +14,23 @@ enum UserRole {
   DRIVER
   PASSENGER
   AGENCY
+  ADMIN
+}
+
+enum VerificationStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum AuditAction {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
 }
 
 enum TripStatus {
@@ -49,13 +66,17 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Driver verification (required to post carpooling trips)
+  // Legacy driver verification (kept for backward compat during migration)
   driverVerified       Boolean  @default(false)
   nationalId           String?
   drivingLicenseNumber String?
   licensePlate         String?
 
+  // Profile
+  profileImageUrl      String?
+
   // Relations
+  verificationSubmissions DriverVerificationSubmission[]
   tripsAsDriver    Trip[]           @relation("DriverTrips")
   bookings         Booking[]        @relation("PassengerBookings")
   messagesSent     Message[]        @relation("SenderMessages")
@@ -206,3 +227,70 @@ model OtpVerification {
   @@index([expiresAt])
 }
 
+model DriverVerificationSubmission {
+  id        String            @id @default(cuid())
+  userId    String
+  version   Int               @default(1)
+
+  // Personal info
+  fullName          String?
+  phone             String?
+  dateOfBirth       DateTime?
+  nationalIdNumber  String?
+
+  // Document paths (stored privately; served via signed URLs)
+  nationalIdFront    String?
+  nationalIdBack     String?
+  licenseFront       String?
+  licenseBack        String?
+
+  // Vehicle info
+  plateNumber    String?
+  vehicleMake    String?
+  vehicleModel   String?
+  vehicleColor   String?
+  vehicleSeats   Int?
+
+  // Vehicle documents
+  yellowCardPath   String?
+  insurancePath    String?
+  vehiclePhotoFront String?
+  vehiclePhotoRear  String?
+  vehiclePhotoSide  String?
+
+  // Status & review
+  status           VerificationStatus @default(DRAFT)
+  submittedAt      DateTime?
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  licenseExpiry    DateTime?
+  insuranceExpiry  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audits VerificationAuditLog[]
+
+  @@unique([userId, version])
+  @@index([userId])
+  @@index([status])
+  @@index([submittedAt])
+}
+
+model VerificationAuditLog {
+  id         String      @id @default(cuid())
+  submissionId String
+  adminId    String
+  action     AuditAction
+  reason     String?
+  metadata   Json?       // Additional context
+  createdAt  DateTime    @default(now())
+
+  submission DriverVerificationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([adminId])
+  @@index([createdAt])
+}

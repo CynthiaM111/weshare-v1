@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { VerifiedBadge } from '@/components/VerifiedBadge'
+import VerifiedBadge from '@/components/VerifiedBadge'
 
 interface Trip {
   id: string

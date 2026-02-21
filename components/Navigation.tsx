@@ -9,6 +9,8 @@ interface User {
   phone: string
   name: string
   role: string
+  profileImageUrl?: string | null
+  isVerified?: boolean
 }
 
 export default function Navigation() {
@@ -18,23 +20,34 @@ export default function Navigation() {
   const [showMenu, setShowMenu] = useState(false)
 
   useEffect(() => {
-    const checkUser = () => {
+    const checkUser = async () => {
       try {
         const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
         if (userStr) {
           const userData = JSON.parse(userStr)
-          // Only set user if data is valid
           if (userData && userData.id) {
             setUser(userData)
+            // Fetch fresh profile (isVerified, profileImageUrl) - fixes stale localStorage
+            try {
+              const res = await fetch('/api/profile', { headers: { 'x-user-id': userData.id } })
+              if (res.ok) {
+                const profile = await res.json()
+                const updated = {
+                  ...userData,
+                  profileImageUrl: profile.profileImageUrl ?? userData.profileImageUrl,
+                  isVerified: profile.isVerified ?? userData.isVerified,
+                }
+                setUser(updated)
+                localStorage.setItem('user', JSON.stringify(updated))
+              }
+            } catch (_) {}
           } else {
-            // Invalid data, but don't clear it here - let the auth pages handle it
             setUser(null)
           }
         } else {
           setUser(null)
         }
       } catch (error) {
-        // Error parsing user data, but don't clear localStorage here
         console.error('Error parsing user data in Navigation:', error)
         setUser(null)
       }
@@ -158,43 +171,64 @@ export default function Navigation() {
               </svg>
             </Link>
             <div className="hidden md:flex md:items-center md:space-x-1">
-              <Link
-                href="/trips"
-                className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  isActive('/trips')
-                    ? 'text-blue-600 bg-blue-50'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  Carpooling
-                </span>
-                {isActive('/trips') && (
-                  <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full"></span>
-                )}
-              </Link>
-              <Link
-                href="/bus-trips"
-                className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  isActive('/bus-trips')
-                    ? 'text-green-600 bg-green-50'
-                    : 'text-gray-700 hover:text-green-600 hover:bg-gray-50'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  Bus Tickets
-                </span>
-                {isActive('/bus-trips') && (
-                  <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-green-600 rounded-full"></span>
-                )}
-              </Link>
-              {user ? (
+              {user?.role === 'ADMIN' ? (
+                <>
+                  <Link
+                    href="/admin/verification"
+                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      pathname?.startsWith('/admin/verification')
+                        ? 'text-amber-600 bg-amber-50'
+                        : 'text-gray-700 hover:text-amber-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Driver Verifications
+                    </span>
+                    {pathname?.startsWith('/admin/verification') && (
+                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-amber-600 rounded-full"></span>
+                    )}
+                  </Link>
+                  <Link
+                    href="/"
+                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      pathname === '/'
+                        ? 'text-gray-800 bg-gray-100'
+                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                      View Site
+                    </span>
+                    {pathname === '/' && (
+                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gray-600 rounded-full"></span>
+                    )}
+                  </Link>
+                  <Link
+                    href="/about"
+                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      isActive('/about')
+                        ? 'text-gray-800 bg-gray-100'
+                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      About
+                    </span>
+                    {isActive('/about') && (
+                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gray-600 rounded-full"></span>
+                    )}
+                  </Link>
+                </>
+              ) : user ? (
                 <>
                   <Link
                     href="/my-trips"
@@ -230,24 +264,6 @@ export default function Navigation() {
                     </span>
                     {isActive('/bookings') && (
                       <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full"></span>
-                    )}
-                  </Link>
-                  <Link
-                    href="/about"
-                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                      isActive('/about')
-                        ? 'text-gray-800 bg-gray-100'
-                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      About
-                    </span>
-                    {isActive('/about') && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gray-600 rounded-full"></span>
                     )}
                   </Link>
                   <Link
@@ -319,11 +335,29 @@ export default function Navigation() {
                   onClick={() => setShowMenu(!showMenu)}
                   className="flex items-center space-x-2 px-3 py-2 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 border border-transparent hover:border-gray-200"
                 >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
-                      {user.name.charAt(0).toUpperCase()}
+                    <div className="flex items-center space-x-2">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md overflow-hidden shrink-0 ${
+                      !user.profileImageUrl && (user.role === 'ADMIN'
+                        ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                        : 'bg-gradient-to-br from-blue-600 to-indigo-600')
+                    }`}>
+                      {user.profileImageUrl ? (
+                        <img src={`/api/profile/image/${user.id}`} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        user.name.charAt(0).toUpperCase()
+                      )}
                     </div>
-                    <span className="hidden md:block text-sm font-semibold text-gray-900">
+                    <div className="hidden md:flex flex-col items-start">
+                      <span className={`text-[10px] font-semibold uppercase tracking-wide ${
+                        user.isVerified ? 'text-emerald-600' : 'text-gray-500'
+                      }`}>
+                        {user.isVerified ? 'Verified' : 'Not verified'}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900 -mt-0.5">
+                        {user.name}
+                      </span>
+                    </div>
+                    <span className="md:hidden text-sm font-semibold text-gray-900">
                       {user.name}
                     </span>
                     <svg

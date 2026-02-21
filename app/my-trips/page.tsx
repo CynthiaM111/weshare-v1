@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { VerifiedBadge } from '@/components/VerifiedBadge'
+import VerifiedBadge from '@/components/VerifiedBadge'
 
 interface Booking {
   id: string

@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
         name: user.name,
         role: user.role,
         phoneVerified: true,
+        profileImageUrl: user.profileImageUrl ?? null,
+        isVerified: false,
       },
       message: 'In the future, an OTP will be sent to this phone number for verification',
     })

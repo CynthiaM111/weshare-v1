@@ -184,7 +184,7 @@ function TripsPageContent() {
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Available Trips</h1>
               <p className="text-gray-600">Find your perfect ride or share your journey</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => fetchTrips(true)}
                 disabled={refreshing}

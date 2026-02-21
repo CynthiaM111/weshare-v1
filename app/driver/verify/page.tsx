@@ -378,17 +378,17 @@ export default function DriverVerifyPage() {
       : null
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
+    <div className="min-h-screen bg-gray-100 py-6 sm:py-8 px-4 pb-12">
       <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <Link href="/trips" className="text-blue-600 hover:underline text-sm font-medium">
             ← Back to Trips
           </Link>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Driver Verification</h1>
-        <p className="text-gray-700 mb-6">Step {step + 1} of {STEPS.length}: {current.title}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Driver Verification</h1>
+        <p className="text-gray-700 mb-4 sm:mb-6 text-sm sm:text-base">Step {step + 1} of {STEPS.length}: {current.title}</p>
 
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+        <div className="flex gap-2 mb-6 sm:mb-8 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
           {STEPS.map((s, i) => (
             <button
               key={s.id}
@@ -402,7 +402,7 @@ export default function DriverVerifyPage() {
           ))}
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
           {current.id === 'personal' && (
             <div className="space-y-4">
               <div>

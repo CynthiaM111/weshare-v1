@@ -80,19 +80,19 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-gray-100 pb-8">
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Manage Admins</h1>
           <Link
             href="/admin/verification"
-            className="text-amber-600 hover:text-amber-700 font-medium"
+            className="text-amber-600 hover:text-amber-700 font-medium shrink-0"
           >
             ← Driver Verifications
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl shadow border border-gray-200 p-6 mb-8">
+        <div className="bg-white rounded-xl shadow border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Create New Admin</h2>
           <p className="text-sm text-gray-600 mb-4">
             Admins you create can log in directly at /login with their phone number — no signup required.
@@ -131,23 +131,23 @@ export default function SuperAdminPage() {
         </div>
 
         <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-          <h2 className="text-lg font-semibold text-gray-900 px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 px-4 sm:px-6 py-4 border-b border-gray-200">
             Admin Users
           </h2>
           {loading ? (
             <div className="py-12 text-center text-gray-500">Loading...</div>
           ) : admins.length === 0 ? (
-            <div className="py-12 text-center text-gray-500">No admins yet. Create one above.</div>
+            <div className="py-12 text-center text-gray-500 px-4">No admins yet. Create one above.</div>
           ) : (
             <ul className="divide-y divide-gray-200">
               {admins.map((a) => (
-                <li key={a.id} className="px-6 py-4 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-gray-900">{a.name}</p>
-                    <p className="text-sm text-gray-600">{a.phone}</p>
+                <li key={a.id} className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{a.name}</p>
+                    <p className="text-sm text-gray-600 truncate">{a.phone}</p>
                   </div>
                   <span
-                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                    className={`px-2 py-1 rounded text-xs font-semibold shrink-0 w-fit ${
                       a.role === 'SUPER_ADMIN'
                         ? 'bg-amber-100 text-amber-800'
                         : 'bg-blue-100 text-blue-800'

@@ -18,6 +18,7 @@ export default function Navigation() {
   const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   const [showMenu, setShowMenu] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
     const checkUser = async () => {
@@ -91,6 +92,11 @@ export default function Navigation() {
     }
   }, [showMenu])
 
+  // Close mobile nav on route change
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [pathname])
+
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user')
@@ -110,7 +116,7 @@ export default function Navigation() {
   const isActive = (path: string) => pathname === path
 
   return (
-    <nav className="bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-100 sticky top-0 z-50">
+    <nav className="relative bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-10">
@@ -170,6 +176,20 @@ export default function Navigation() {
                 </defs>
               </svg>
             </Link>
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              aria-label="Toggle menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileNavOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
             <div className="hidden md:flex md:items-center md:space-x-1">
               {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
                 <>
@@ -347,6 +367,59 @@ export default function Navigation() {
               )}
             </div>
           </div>
+
+          {/* Mobile nav overlay */}
+          {mobileNavOpen && (
+            <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 z-40">
+              <div className="flex flex-col gap-1">
+                {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
+                  <>
+                    {user?.role === 'SUPER_ADMIN' && (
+                      <Link href="/admin/super" className="px-4 py-3 rounded-lg hover:bg-amber-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                        Manage Admins
+                      </Link>
+                    )}
+                    <Link href="/admin/verification" className="px-4 py-3 rounded-lg hover:bg-amber-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      Driver Verifications
+                    </Link>
+                    <Link href="/" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      View Site
+                    </Link>
+                    <Link href="/about" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      About
+                    </Link>
+                  </>
+                ) : user ? (
+                  <>
+                    <Link href="/trips" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      Carpooling
+                    </Link>
+                    <Link href="/bus-trips" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      Bus Tickets
+                    </Link>
+                    <Link href="/my-trips" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      My Trips
+                    </Link>
+                    <Link href="/bookings" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      My Bookings
+                    </Link>
+                    <Link href="/about" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                      About
+                    </Link>
+                    {user.role === 'DRIVER' && (
+                      <Link href="/driver" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                        Dashboard
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <Link href="/about" className="px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-900 font-medium" onClick={() => setMobileNavOpen(false)}>
+                    About
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center">
             {user ? (

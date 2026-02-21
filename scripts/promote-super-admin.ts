@@ -1,8 +1,12 @@
 /**
  * Promote a user to SUPER_ADMIN by phone number.
- * Usage: npx tsx scripts/promote-super-admin.ts +250788000000
+ * Usage: DATABASE_URL="postgresql://..." npx tsx scripts/promote-super-admin.ts +250788000000
  */
-import { prisma } from '../lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient({
+    datasources: { db: { url: process.env.DATABASE_URL } },
+})
 
 async function main() {
     const phoneArg = process.argv[2] || '+250788000000'

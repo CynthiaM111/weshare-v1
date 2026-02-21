@@ -60,7 +60,7 @@ function DocViewer({ path, label, userId }: { path: string | null; label: string
           </a>
         ) : (
           <a href={objectUrl} target="_blank" rel="noopener noreferrer" className="block">
-            <img src={objectUrl} alt={label} className="max-w-xs max-h-48 object-contain border rounded-lg border-gray-300" />
+            <img src={objectUrl} alt={label} className="max-w-full sm:max-w-xs max-h-48 object-contain border rounded-lg border-gray-300" />
           </a>
         )
       ) : (
@@ -152,14 +152,14 @@ export default function AdminVerificationDetailPage() {
   const canReview = ['SUBMITTED', 'IN_REVIEW', 'CHANGES_REQUESTED'].includes(submission.status)
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <Link href="/admin/verification" className="text-blue-600 hover:underline mb-6 inline-block font-medium">
+    <div className="min-h-screen bg-gray-100 pb-8">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
+        <Link href="/admin/verification" className="text-blue-600 hover:underline mb-4 sm:mb-6 inline-block font-medium">
           ← Back to Queue
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Verification Submission</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Verification Submission</h1>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 border border-gray-200">
           <div className="flex justify-between items-start mb-6">
             <div>
               <span className={`px-3 py-1 rounded-full text-sm font-bold ${
@@ -247,25 +247,25 @@ export default function AdminVerificationDetailPage() {
                 placeholder="Provide feedback..."
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 min-h-[100px] bg-white text-gray-900 placeholder:text-gray-500"
               />
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => handleReview('APPROVE')}
                   disabled={actionLoading}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
+                  className="px-6 py-3 sm:py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
                 >
                   Approve
                 </button>
                 <button
                   onClick={() => handleReview('CHANGES_REQUESTED')}
                   disabled={actionLoading || !reason.trim()}
-                  className="px-6 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 disabled:opacity-50"
+                  className="px-6 py-3 sm:py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 disabled:opacity-50"
                 >
                   Request Changes
                 </button>
                 <button
                   onClick={() => handleReview('REJECT')}
                   disabled={actionLoading || !reason.trim()}
-                  className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50"
+                  className="px-6 py-3 sm:py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50"
                 >
                   Reject
                 </button>

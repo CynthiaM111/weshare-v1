@@ -261,13 +261,13 @@ export default function BookingsPage() {
               return (
                 <div key={booking.id} className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
                   {/* Booking Header */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 p-4 sm:p-6">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 truncate">
                           {booking.trip.departCity} → {booking.trip.destinationCity}
                         </h3>
-                        <p className="text-sm text-gray-600 font-medium">
+                        <p className="text-sm text-gray-600 font-medium truncate">
                           {booking.trip.departLocation} → {booking.trip.destinationLocation}
                         </p>
                       </div>
@@ -288,7 +288,7 @@ export default function BookingsPage() {
                   </div>
 
                   {/* Booking Details */}
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">

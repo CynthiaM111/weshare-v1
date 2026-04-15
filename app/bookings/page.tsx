@@ -27,6 +27,7 @@ interface Booking {
       driverVerified?: boolean
     }
   }
+  payments?: Array<{ id: string }>
 }
 
 export default function BookingsPage() {
@@ -340,6 +341,32 @@ export default function BookingsPage() {
                       </div>
                     </div>
 
+                    {/* Pay driver directly - show for CONFIRMED bookings */}
+                    {booking.status === 'CONFIRMED' && (
+                      <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 mb-6">
+                        <h4 className="text-sm font-bold text-amber-900 mb-2 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          Pay the driver directly
+                        </h4>
+                        <p className="text-sm text-amber-800 mb-3">
+                          Hand or send <strong>RWF {(booking.trip.price * booking.seats).toLocaleString()}</strong> to the driver’s mobile money (MoMo).
+                        </p>
+                        <div className="bg-white rounded-lg p-3 border border-amber-200">
+                          <p className="text-xs text-gray-500 font-medium mb-0.5">Driver</p>
+                          <p className="text-base font-bold text-gray-900">{booking.trip.driver.name}</p>
+                          <p className="text-xs text-gray-500 font-medium mt-2 mb-0.5">MoMo number</p>
+                          <a
+                            href={`tel:${booking.trip.driver.phone}`}
+                            className="text-lg font-bold text-amber-700 hover:text-amber-800 hover:underline"
+                          >
+                            {booking.trip.driver.phone}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Driver & Car Info */}
                     <div className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-xl p-4 mb-6 border border-blue-100">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -364,7 +391,7 @@ export default function BookingsPage() {
                     </div>
                   
                     {/* Actions Section */}
-                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pt-4 border-t border-gray-200">
+                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pt-4 border-t border-gray-200 flex-wrap">
                       {booking.status === 'CONFIRMED' && (
                         <Link
                           href={`/messages/${booking.id}`}

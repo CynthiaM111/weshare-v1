@@ -1,18 +1,8 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import dynamic from "next/dynamic";
-
-// Dynamically import Navigation to reduce initial bundle size
-const Navigation = dynamic(() => import("@/components/Navigation"), {
-  ssr: true,
-  loading: () => <div className="h-16 bg-white border-b border-gray-200" />,
-});
-
-// Dynamically import Toaster to reduce initial bundle size
-const Toaster = dynamic(() => import("sonner").then((mod) => mod.Toaster), {
-  ssr: false,
-});
+import Navigation from "@/components/Navigation";
+import { Toaster } from "sonner";
 
 const poppins = Poppins({ 
   subsets: ["latin"],

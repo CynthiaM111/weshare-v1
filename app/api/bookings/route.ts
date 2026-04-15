@@ -221,6 +221,10 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        payments: {
+          where: { status: 'COMPLETED' },
+          select: { id: true },
+        },
       },
       orderBy: {
         createdAt: 'desc',

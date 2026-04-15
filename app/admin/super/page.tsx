@@ -67,13 +67,16 @@ export default function SuperAdminPage() {
     setUserId(user.id)
   }, [router])
 
-  const headers = () => (userId ? { 'x-user-id': userId } : {})
+  const authHeaders = (): HeadersInit => {
+    if (!userId) return {}
+    return { 'x-user-id': userId }
+  }
 
   useEffect(() => {
     if (!userId) return
     Promise.all([
-      fetch('/api/admin/users', { headers: headers() }).then((r) => r.json()),
-      fetch('/api/admin/stats', { headers: headers() }).then((r) => r.json()),
+      fetch('/api/admin/users', { headers: authHeaders() }).then((r) => r.json()),
+      fetch('/api/admin/stats', { headers: authHeaders() }).then((r) => r.json()),
     ])
       .then(([adminsData, statsData]) => {
         setAdmins(Array.isArray(adminsData) ? adminsData : [])
@@ -89,7 +92,7 @@ export default function SuperAdminPage() {
       if (!userId) return
       setDriversLoading(true)
       const url = q ? `/api/admin/drivers?q=${encodeURIComponent(q)}` : '/api/admin/drivers'
-      fetch(url, { headers: headers() })
+      fetch(url, { headers: authHeaders() })
         .then((r) => r.json())
         .then((data) => (Array.isArray(data) ? setDrivers(data) : setDrivers([])))
         .catch(() => setDrivers([]))

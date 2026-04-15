@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
+import LogoMark from '@/components/LogoMark'
 
 interface User {
   id: string
@@ -116,70 +117,20 @@ export default function Navigation() {
   const isActive = (path: string) => pathname === path
 
   return (
-    <nav className="relative bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-100 sticky top-0 z-50">
+    <nav className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/75 backdrop-blur-xl shadow-[0_1px_0_rgba(15,23,42,0.04)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center gap-10">
-            <Link href="/" className="flex items-center hover:opacity-80 transition-all duration-300 hover:scale-105">
-              <svg 
-                className="w-10 h-10 text-blue-600" 
-                viewBox="0 0 100 100" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {/* Interconnected circles representing sharing/connection (Venn diagram style) */}
-                <circle cx="30" cy="50" r="15" fill="url(#navGradient1)" opacity="0.9" />
-                <circle cx="50" cy="50" r="18" fill="url(#navGradient2)" />
-                <circle cx="70" cy="50" r="15" fill="url(#navGradient1)" opacity="0.9" />
-                
-                {/* Connection lines */}
-                <path 
-                  d="M45 50 L55 50" 
-                  stroke="white" 
-                  strokeWidth="3" 
-                  strokeLinecap="round"
-                />
-                <path 
-                  d="M25 50 L35 50" 
-                  stroke="white" 
-                  strokeWidth="2" 
-                  strokeLinecap="round"
-                  opacity="0.8"
-                />
-                <path 
-                  d="M65 50 L75 50" 
-                  stroke="white" 
-                  strokeWidth="2" 
-                  strokeLinecap="round"
-                  opacity="0.8"
-                />
-                
-                {/* Road/route symbol at bottom */}
-                <path 
-                  d="M20 75 Q50 65 80 75" 
-                  stroke="url(#navGradient2)" 
-                  strokeWidth="4" 
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                
-                <defs>
-                  <linearGradient id="navGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#3B82F6" />
-                    <stop offset="100%" stopColor="#6366F1" />
-                  </linearGradient>
-                  <linearGradient id="navGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#3B82F6" />
-                    <stop offset="50%" stopColor="#6366F1" />
-                    <stop offset="100%" stopColor="#8B5CF6" />
-                  </linearGradient>
-                </defs>
-              </svg>
+        <div className="flex justify-between items-center h-14">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-2 group">
+              <LogoMark className="w-9 h-9" />
+              <span className="hidden sm:block text-[15px] font-extrabold tracking-tight text-slate-900 group-hover:text-blue-700 transition">
+                WeShare
+              </span>
             </Link>
             {/* Mobile hamburger */}
             <button
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              className="md:hidden p-2.5 rounded-xl hover:bg-slate-100/70 text-slate-700 transition"
               aria-label="Toggle menu"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,10 +147,10 @@ export default function Navigation() {
                   {user?.role === 'SUPER_ADMIN' && (
                     <Link
                       href="/admin/super"
-                      className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                         pathname?.startsWith('/admin/super')
-                          ? 'text-amber-600 bg-amber-50'
-                          : 'text-gray-700 hover:text-amber-600 hover:bg-gray-50'
+                          ? 'text-amber-800 bg-amber-50/80 border-amber-200 shadow-sm'
+                          : 'text-slate-700 bg-white/40 border-transparent hover:border-amber-200 hover:bg-amber-50/60 hover:text-amber-800'
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -208,17 +159,14 @@ export default function Navigation() {
                         </svg>
                         Manage Admins
                       </span>
-                      {pathname?.startsWith('/admin/super') && (
-                        <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-amber-600 rounded-full"></span>
-                      )}
                     </Link>
                   )}
                   <Link
                     href="/admin/verification"
-                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                       pathname?.startsWith('/admin/verification')
-                        ? 'text-amber-600 bg-amber-50'
-                        : 'text-gray-700 hover:text-amber-600 hover:bg-gray-50'
+                        ? 'text-amber-800 bg-amber-50/80 border-amber-200 shadow-sm'
+                        : 'text-slate-700 bg-white/40 border-transparent hover:border-amber-200 hover:bg-amber-50/60 hover:text-amber-800'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -227,16 +175,13 @@ export default function Navigation() {
                       </svg>
                       Driver Verifications
                     </span>
-                    {pathname?.startsWith('/admin/verification') && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-amber-600 rounded-full"></span>
-                    )}
                   </Link>
                   <Link
                     href="/"
-                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                       pathname === '/'
-                        ? 'text-gray-800 bg-gray-100'
-                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                        ? 'text-slate-900 bg-white border-slate-200 shadow-sm'
+                        : 'text-slate-700 bg-white/40 border-transparent hover:border-slate-200 hover:bg-white/70 hover:text-slate-900'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -245,16 +190,13 @@ export default function Navigation() {
                       </svg>
                       View Site
                     </span>
-                    {pathname === '/' && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gray-600 rounded-full"></span>
-                    )}
                   </Link>
                   <Link
                     href="/about"
-                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                       isActive('/about')
-                        ? 'text-gray-800 bg-gray-100'
-                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                        ? 'text-slate-900 bg-white border-slate-200 shadow-sm'
+                        : 'text-slate-700 bg-white/40 border-transparent hover:border-slate-200 hover:bg-white/70 hover:text-slate-900'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -263,19 +205,16 @@ export default function Navigation() {
                       </svg>
                       About
                     </span>
-                    {isActive('/about') && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gray-600 rounded-full"></span>
-                    )}
                   </Link>
                 </>
               ) : user ? (
                 <>
                   <Link
                     href="/my-trips"
-                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                       isActive('/my-trips')
-                        ? 'text-purple-600 bg-purple-50'
-                        : 'text-gray-700 hover:text-purple-600 hover:bg-gray-50'
+                        ? 'text-purple-700 bg-purple-50/80 border-purple-200 shadow-sm'
+                        : 'text-slate-700 bg-white/40 border-transparent hover:border-slate-200 hover:bg-white/70 hover:text-slate-900'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -284,16 +223,13 @@ export default function Navigation() {
                       </svg>
                       My Trips
                     </span>
-                    {isActive('/my-trips') && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-600 rounded-full"></span>
-                    )}
                   </Link>
                   <Link
                     href="/bookings"
-                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                       isActive('/bookings')
-                        ? 'text-indigo-600 bg-indigo-50'
-                        : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
+                        ? 'text-indigo-700 bg-indigo-50/80 border-indigo-200 shadow-sm'
+                        : 'text-slate-700 bg-white/40 border-transparent hover:border-slate-200 hover:bg-white/70 hover:text-slate-900'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -302,16 +238,13 @@ export default function Navigation() {
                       </svg>
                       My Bookings
                     </span>
-                    {isActive('/bookings') && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full"></span>
-                    )}
                   </Link>
                   <Link
                     href="/about"
-                    className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                       isActive('/about')
-                        ? 'text-gray-800 bg-gray-100'
-                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                        ? 'text-slate-900 bg-white border-slate-200 shadow-sm'
+                        : 'text-slate-700 bg-white/40 border-transparent hover:border-slate-200 hover:bg-white/70 hover:text-slate-900'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -320,17 +253,14 @@ export default function Navigation() {
                       </svg>
                       About
                     </span>
-                    {isActive('/about') && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gray-600 rounded-full"></span>
-                    )}
                   </Link>
                   {user.role === 'DRIVER' && (
                     <Link
                       href="/driver"
-                      className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                         isActive('/driver')
-                          ? 'text-orange-600 bg-orange-50'
-                          : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
+                          ? 'text-orange-700 bg-orange-50/80 border-orange-200 shadow-sm'
+                          : 'text-slate-700 bg-white/40 border-transparent hover:border-slate-200 hover:bg-white/70 hover:text-slate-900'
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -339,19 +269,16 @@ export default function Navigation() {
                         </svg>
                         Dashboard
                       </span>
-                      {isActive('/driver') && (
-                        <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-orange-600 rounded-full"></span>
-                      )}
                     </Link>
                   )}
                 </>
               ) : (
                 <Link
                   href="/about"
-                  className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  className={`relative px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all duration-200 ${
                     isActive('/about')
-                      ? 'text-gray-800 bg-gray-100'
-                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                      ? 'text-slate-900 bg-white border-slate-200 shadow-sm'
+                      : 'text-slate-700 bg-white/40 border-transparent hover:border-slate-200 hover:bg-white/70 hover:text-slate-900'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -360,9 +287,6 @@ export default function Navigation() {
                     </svg>
                     About
                   </span>
-                  {isActive('/about') && (
-                    <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gray-600 rounded-full"></span>
-                  )}
                 </Link>
               )}
             </div>
@@ -497,7 +421,7 @@ export default function Navigation() {
             ) : (
               <Link
                 href="/login"
-                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5"
+                className="ws-btn-primary px-4 py-2 text-sm"
               >
                 Login/SignUp
               </Link>

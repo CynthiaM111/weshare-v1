@@ -40,6 +40,9 @@ export default function MessagesPage() {
   const shouldAutoScroll = useRef(true) // Only auto-scroll on initial load or when user sends a message
   const isUserScrolling = useRef(false) // Track if user is actively scrolling
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const consecutivePollFailuresRef = useRef(0)
+  const pollDisabledRef = useRef(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -64,6 +67,8 @@ export default function MessagesPage() {
   }, [bookingId])
 
   const checkForNewMessages = useCallback(async () => {
+    if (pollDisabledRef.current) return
+
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
     if (!userStr) return
 
@@ -78,8 +83,27 @@ export default function MessagesPage() {
       })
 
       if (!response.ok) {
+        consecutivePollFailuresRef.current += 1
+
+        // If the booking doesn't exist / is not accessible, polling will never succeed.
+        // Stop polling to avoid hammering the server and freezing the UI.
+        if (response.status === 404 || response.status === 401 || response.status === 403) {
+          pollDisabledRef.current = true
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+          pollIntervalRef.current = null
+          return
+        }
+
+        // Back off after repeated failures.
+        if (consecutivePollFailuresRef.current >= 5) {
+          pollDisabledRef.current = true
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+          pollIntervalRef.current = null
+        }
         return
       }
+
+      consecutivePollFailuresRef.current = 0
 
       // Check if response is JSON
       const contentType = response.headers.get('content-type')
@@ -239,11 +263,18 @@ export default function MessagesPage() {
   // Poll for new messages every 2 seconds for better real-time feel
   useEffect(() => {
     if (loading) return
-    
-    const interval = setInterval(() => {
+
+    pollDisabledRef.current = false
+    consecutivePollFailuresRef.current = 0
+
+    pollIntervalRef.current = setInterval(() => {
       checkForNewMessages()
-    }, 2000)
-    return () => clearInterval(interval)
+    }, 5000)
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
   }, [loading, checkForNewMessages, notificationPermission])
 
   // Track scroll position to detect if user is scrolled up

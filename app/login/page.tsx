@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import LogoMark from '@/components/LogoMark'
 
 function LoginForm() {
   const router = useRouter()
@@ -91,10 +92,25 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 border border-gray-200">
+    <div className="ws-shell flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md ws-card-elevated p-8 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/40" />
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+        <div className="relative">
+          <div className="text-center mb-6">
+            <Link href="/" className="inline-flex items-center gap-2 group">
+              <LogoMark className="w-10 h-10" />
+              <span className="text-lg font-extrabold tracking-tight text-slate-900 group-hover:text-blue-700 transition">
+                WeShare
+              </span>
+            </Link>
+            <p className="mt-2 text-sm text-slate-600">
+              Carpooling and bus tickets across Rwanda.
+            </p>
+          </div>
         <div className="flex justify-center mb-6">
-          <div className="bg-gray-100 rounded-lg p-1 inline-flex">
+          <div className="bg-white/80 backdrop-blur rounded-xl p-1 inline-flex border border-slate-200 shadow-sm">
             <button
               type="button"
               onClick={() => {
@@ -102,8 +118,8 @@ function LoginForm() {
                 setName('')
               }}
               className={`px-4 py-2 rounded-md text-sm font-medium transition ${!isSignUp
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               Login
@@ -112,8 +128,8 @@ function LoginForm() {
               type="button"
               onClick={() => setIsSignUp(true)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition ${isSignUp
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               Sign Up
@@ -121,12 +137,12 @@ function LoginForm() {
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">
+        <h1 className="text-2xl font-extrabold text-center mb-6 text-slate-900">
           {isSignUp ? 'Create Account' : 'Login to WeShare'}
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-900 mb-1">
+            <label htmlFor="phone" className="block text-sm font-semibold text-slate-900 mb-1">
               Phone Number (MTN or Airtel Rwanda)
             </label>
             <input
@@ -136,15 +152,15 @@ function LoginForm() {
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+250788123456"
               required
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none placeholder:text-gray-500"
+              className="ws-input"
             />
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-slate-600 mt-1">
               Format: +250XXXXXXXXX (MTN: 078/079, Airtel: 072/073)
             </p>
           </div>
           {isSignUp && (
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-900 mb-1">
+              <label htmlFor="name" className="block text-sm font-semibold text-slate-900 mb-1">
                 Full Name
               </label>
               <input
@@ -155,14 +171,14 @@ function LoginForm() {
                 placeholder="John Doe"
                 required={isSignUp}
                 minLength={2}
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none placeholder:text-gray-500"
+                className="ws-input"
               />
             </div>
           )}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="w-full ws-btn-primary py-3"
           >
             {loading
               ? isSignUp
@@ -173,7 +189,7 @@ function LoginForm() {
                 : 'Login'}
           </button>
         </form>
-        <p className="text-center text-sm text-gray-700 mt-4">
+        <p className="text-center text-sm text-slate-700 mt-5">
           {isSignUp
             ? 'Already have an account?'
             : "Don't have an account?"}{' '}
@@ -183,15 +199,16 @@ function LoginForm() {
               setIsSignUp(!isSignUp)
               if (!isSignUp) setName('')
             }}
-            className="text-blue-600 hover:underline font-medium"
+            className="text-blue-700 hover:text-blue-800 font-semibold underline-offset-4 hover:underline"
           >
             {isSignUp ? 'Login' : 'Sign Up'}
           </button>
         </p>
         <div className="mt-4 text-center">
-          <Link href="/" className="text-blue-600 hover:underline text-sm">
+          <Link href="/" className="text-blue-700 hover:text-blue-800 text-sm font-semibold underline-offset-4 hover:underline">
             Back to Home
           </Link>
+        </div>
         </div>
       </div>
     </div>
@@ -201,10 +218,10 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="ws-shell flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-slate-600">Loading...</p>
         </div>
       </div>
     }>

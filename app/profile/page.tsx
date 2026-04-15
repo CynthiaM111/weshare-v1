@@ -116,14 +116,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="ws-shell py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-gray-900">My Profile</h1>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-6">
+        <div className="ws-card-elevated p-6 mb-6">
           <div className="flex items-center space-x-4 mb-6">
             <div className="relative group">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-600 shrink-0">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-600 shrink-0 shadow-md ring-1 ring-black/5">
                 {user.profileImageUrl ? (
                   <img src={`/api/profile/image/${user.id}`} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -134,7 +134,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                className="absolute inset-0 flex items-center justify-center bg-black/55 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity text-white"
                 title="Update profile picture"
               >
                 {uploading ? (
@@ -156,14 +156,14 @@ export default function ProfilePage() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
               <p className="text-gray-700">{getRoleDisplay(user.role)}</p>
-              <p className={`text-sm font-medium mt-1 ${user.isVerified ? 'text-emerald-600' : 'text-gray-500'}`}>
+              <p className={`text-sm font-semibold mt-1 ${user.isVerified ? 'text-emerald-700' : 'text-slate-600'}`}>
                 {user.isVerified ? 'Verified' : 'Not verified'}
               </p>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium mt-1"
+                className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-800 font-semibold mt-1 underline-offset-4 hover:underline"
                 title="Update profile picture"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +190,7 @@ export default function ProfilePage() {
                   <div className="flex items-center space-x-2">
                     <p className="text-gray-800">{user.phone}</p>
                     {user.phoneVerified && (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                      <span className="ws-badge-success">
                         Verified
                       </span>
                     )}
@@ -206,7 +206,7 @@ export default function ProfilePage() {
                   <label className="block text-sm font-semibold text-gray-900 mb-1">
                     Account Status
                   </label>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full">
+                  <span className="ws-badge-neutral text-sm px-3 py-1">
                     Active
                   </span>
                 </div>
@@ -216,31 +216,31 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <div className="ws-card p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-2">
               <Link
                 href="/my-trips"
-                className="block px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-900 font-medium transition"
+                className="block px-4 py-2 bg-white/80 border border-slate-200 hover:border-blue-300 rounded-xl text-slate-900 font-semibold transition shadow-sm hover:shadow-md"
               >
                 My Trips
               </Link>
               <Link
                 href="/bookings"
-                className="block px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-900 font-medium transition"
+                className="block px-4 py-2 bg-white/80 border border-slate-200 hover:border-blue-300 rounded-xl text-slate-900 font-semibold transition shadow-sm hover:shadow-md"
               >
                 My Bookings
               </Link>
               <Link
                 href="/trips/new"
-                className="block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                className="block px-4 py-2 ws-btn-primary"
               >
                 Post New Trip
               </Link>
               {user.role === 'DRIVER' && (
                 <Link
                   href="/driver"
-                  className="block px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-900 font-medium transition"
+                  className="block px-4 py-2 bg-white/80 border border-slate-200 hover:border-blue-300 rounded-xl text-slate-900 font-semibold transition shadow-sm hover:shadow-md"
                 >
                   Driver Dashboard
                 </Link>

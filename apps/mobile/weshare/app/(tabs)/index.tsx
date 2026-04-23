@@ -15,6 +15,7 @@ import * as Location from 'expo-location';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import LogoMark from '@/components/LogoMark';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -376,7 +377,7 @@ export default function HomeScreen() {
   }, [destQuery, isEditingDest]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: background }]} edges={['left', 'right', 'bottom']}>
       <View
         style={[
           styles.container,
@@ -388,23 +389,28 @@ export default function HomeScreen() {
           style={styles.pageBg}
         />
 
-        <ThemedView style={styles.topBar} lightColor="transparent" darkColor="transparent">
-          <Pressable accessibilityRole="button" accessibilityLabel="Menu" style={styles.topIconBtn}>
-            <IconSymbol name="circle.grid.2x2.fill" size={22} color={icon} />
-          </Pressable>
+        <ThemedView
+          style={[styles.topBar, { paddingTop: insets.top + 6 }]}
+          lightColor="transparent"
+          darkColor="transparent">
+          <View style={styles.brandWrap}>
+            <View style={styles.logoWrap}>
+              <LogoMark size={30} />
+            </View>
 
-          <View style={styles.greetingWrap}>
-            <ThemedText style={[styles.greeting, { color: subText }]}>
-              Hello, <ThemedText style={[styles.greetingName, { color: text }]}>Saber Ali!</ThemedText>
-            </ThemedText>
+            <View style={styles.greetingWrap}>
+              <ThemedText style={[styles.greeting, { color: subText }]} numberOfLines={1}>
+                Hello, <ThemedText style={[styles.greetingName, { color: text }]}>Saber Ali!</ThemedText>
+              </ThemedText>
+            </View>
           </View>
 
-          <Pressable accessibilityRole="button" accessibilityLabel="Settings" style={styles.topIconBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Settings" style={styles.settingsBtn}>
             <IconSymbol name="gearshape.fill" size={22} color={icon} />
           </Pressable>
         </ThemedView>
 
-        <View style={[styles.mapCard, { backgroundColor: surfaceStrong, borderColor: hairline, height: mapHeight }]}>
+        <View style={[styles.mapCard, { height: mapHeight }]}>
           <MapView
             ref={(r) => {
               mapRef.current = r;
@@ -615,7 +621,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 0,
   },
   pageBg: {
     position: 'absolute',
@@ -628,19 +634,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingBottom: 12,
   },
-  topIconBtn: {
+  brandWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingRight: 12,
+  },
+  logoWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.75)',
   },
   greetingWrap: {
     flex: 1,
-    paddingHorizontal: 12,
   },
   greeting: {
     fontSize: 16,
@@ -650,10 +660,21 @@ const styles = StyleSheet.create({
   greetingName: {
     fontWeight: '900',
   },
+  settingsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.08)',
+  },
   mapCard: {
     marginTop: 8,
-    borderRadius: 28,
-    borderWidth: 1,
+    // Full-bleed map: avoid the “inscribed card” look.
+    marginHorizontal: -16,
+    borderRadius: 0,
     overflow: 'hidden',
   },
   sheetScroll: {

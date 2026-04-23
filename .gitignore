@@ -9,8 +9,8 @@
 /coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
 /build
@@ -38,6 +38,9 @@ next-env.d.ts
 # prisma
 # /prisma/migrations
 
-# Private document storage
-/storage
-/storage
+# Private document storage (local uploads; lives under apps/web)
+apps/web/storage/
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/dist/

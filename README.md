@@ -1,6 +1,6 @@
 # WeShare - Carpooling & Bus Ticketing Platform
 
-A full-stack Next.js web application for carpooling and inter-city bus ticketing services in Rwanda.
+This repository is an **npm workspaces monorepo**: the Next.js web app lives under `apps/web`, and the Expo React Native app under `apps/mobile`. Shared libraries can go in `packages/` as you add them.
 
 ## Features
 
@@ -46,17 +46,19 @@ git clone <repository-url>
 cd weshare-v3
 ```
 
-2. Install dependencies
+2. Install dependencies (from the repository root)
 ```bash
 npm install
 ```
 
-3. Set up environment variables
+3. Set up environment variables for the web app
 ```bash
-cp .env.example .env
+cp .env.example apps/web/.env
 ```
 
-Edit `.env` and add your:
+(if you do not have `.env.example`, create `apps/web/.env` manually)
+
+Edit `apps/web/.env` and add your:
 - `DATABASE_URL`: PostgreSQL connection string
 - `NEXTAUTH_SECRET`: Random secret for authentication
 - `NEXTAUTH_URL`: Your application URL (e.g., http://localhost:3000)
@@ -74,12 +76,24 @@ npm run db:push
 npm run db:seed
 ```
 
-5. Run the development server
+5. Run the development server (web)
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Mobile (Expo)
+
+From the repository root:
+
+```bash
+npm run mobile
+```
+
+Or from `apps/mobile`: `npm run start` (then choose iOS simulator, Android emulator, or Expo Go).
+
+Set **`EXPO_PUBLIC_API_URL`** to your Next.js origin when the API is not on the same machine (for example `http://192.168.1.10:3000` on a phone, or `http://10.0.2.2:3000` for the Android emulator hitting your computer’s localhost).
 
 ## Database Seeding
 
@@ -101,21 +115,16 @@ npm run db:seed
 
 ```
 weshare-v3/
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   ├── trips/            # Trip pages
-│   ├── bookings/         # Booking pages
-│   ├── messages/         # Messaging pages
-│   └── login/            # Authentication pages
-├── components/            # React components
-├── lib/                   # Utility functions
-│   ├── prisma.ts         # Prisma client
-│   ├── auth.ts           # Authentication helpers
-│   └── mobile-money.ts   # Payment integration
-├── prisma/
-│   ├── schema.prisma     # Database schema
-│   └── seed.ts           # Seed script
-└── types/                 # TypeScript types
+├── apps/
+│   ├── web/               # Next.js 14 (App Router)
+│   │   ├── app/           # Routes & API
+│   │   ├── components/
+│   │   ├── lib/
+│   │   ├── prisma/
+│   │   └── public/
+│   └── mobile/            # Expo (React Native)
+├── packages/              # Optional shared packages (types, UI, API client)
+└── package.json           # Workspaces root
 ```
 
 ## API Routes
@@ -163,6 +172,8 @@ npm run db:generate
 npm run build
 npm start
 ```
+
+For hosts such as Vercel or Netlify, set the app **root directory** to `apps/web` so installs and builds run in the correct workspace.
 
 ## Notes
 

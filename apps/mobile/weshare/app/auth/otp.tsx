@@ -1,186 +1,273 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+/**
+ * WeShare — Auth: OTP Verification
+ * 6-digit code entry with individual digit boxes.
+ */
 
-import LogoMark from '@/components/LogoMark';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { formatRwandanPhoneDisplay, normalizeRwandanPhone } from '@/lib/auth/phone';
-import { clearPendingOtp, startOtp } from '@/lib/auth/otp';
-import { saveSession, sessionFromVerifiedPhone } from '@/lib/auth/session';
+import { verifyOtp, sendOtp } from '@/lib/auth/otp';
+import { getProfile } from '@/lib/auth/users';
+import { loadSession } from '@/lib/auth/session';
 
-const RESEND_SECONDS = 30;
+const NAVY = '#08111F';
+const NAVY_2 = '#0E1E35';
+const ACCENT = '#FF6B35';
+const TEAL = '#00C9B1';
+const DANGER = '#EF4444';
+const DIGITS = 6;
 
 export default function OtpScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const scheme = useColorScheme() ?? 'light';
-
-  const background = useThemeColor({}, 'background');
-  const text = useThemeColor({}, 'text');
-  const icon = useThemeColor({}, 'icon');
-  const subText = useThemeColor({ light: 'rgba(17,24,28,0.70)', dark: 'rgba(236,237,238,0.72)' }, 'text');
-  const hairline = useThemeColor({ light: 'rgba(15,23,42,0.10)', dark: 'rgba(236,237,238,0.14)' }, 'background');
-  const surface = useThemeColor({ light: '#FFFFFF', dark: '#202227' }, 'background');
-
-  const params = useLocalSearchParams<{ verificationId?: string; phone?: string; redirect?: string }>();
-  const phoneParam = typeof params.phone === 'string' ? params.phone : '';
-  const redirect = typeof params.redirect === 'string' ? params.redirect : '';
-  const normalized = normalizeRwandanPhone(phoneParam) ?? normalizeRwandanPhone(`+${phoneParam.replace(/[^\d]/g, '')}`);
-
-  const display = useMemo(() => (normalized ? formatRwandanPhoneDisplay(normalized) : phoneParam), [normalized, phoneParam]);
+  const { phone, redirect } = useLocalSearchParams<{ phone: string; redirect?: string }>();
 
   const [code, setCode] = useState('');
-  const [seconds, setSeconds] = useState(RESEND_SECONDS);
-  const [verifying, setVerifying] = useState(false);
-  const [verified, setVerified] = useState(false);
-  const inputRef = useRef<TextInput | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState('');
+  const [resent, setResent] = useState(false);
+  const [countdown, setCountdown] = useState(30);
+  const inputRef = useRef<TextInput>(null);
 
+  // Countdown timer for resend
   useEffect(() => {
-    setSeconds(RESEND_SECONDS);
-  }, [params.verificationId]);
-
-  useEffect(() => {
-    if (seconds <= 0) return;
-    const t = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [seconds]);
-
-  const canVerify = useMemo(() => /^\d{6}$/.test(code), [code]);
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   async function onVerify() {
-    if (!normalized || !canVerify || verifying) return;
-    setVerifying(true);
-    try {
-      // SMS provider not wired yet. For now, any 6 digits "verifies".
-      await saveSession(sessionFromVerifiedPhone(normalized));
-      await clearPendingOtp();
-      setVerified(true);
-      Keyboard.dismiss();
-      router.replace((redirect || '/') as any);
-    } finally {
-      setVerifying(false);
+    if (code.length < DIGITS || loading) return;
+    setError('');
+    setLoading(true);
+
+    const err = await verifyOtp(phone, code);
+    if (err) {
+      setLoading(false);
+      setError('Invalid code. Please try again.');
+      setCode('');
+      return;
+    }
+
+    const session = await loadSession();
+    if (!session) {
+      setLoading(false);
+      setError('Something went wrong. Please try again.');
+      return;
+    }
+
+    // Check if first time user
+    const profile = await getProfile(session.userId);
+    setLoading(false);
+
+    if (!profile?.fullName) {
+      router.replace({
+        pathname: '/auth/signup',
+        params: { redirect: redirect ?? '/' },
+      } as any);
+    } else {
+      router.replace((redirect ?? '/') as any);
     }
   }
 
   async function onResend() {
-    if (!normalized || seconds > 0) return;
-    const { verificationId } = await startOtp(normalized);
-    // Keep the flow self-contained: reset state, stay on same screen.
+    if (resending || countdown > 0) return;
+    setResending(true);
+    setError('');
+    await sendOtp(phone);
+    setResending(false);
+    setResent(true);
+    setCountdown(30);
     setCode('');
-    setVerified(false);
-    setSeconds(RESEND_SECONDS);
-    router.setParams({ verificationId });
-    requestAnimationFrame(() => inputRef.current?.focus());
+    setTimeout(() => setResent(false), 3000);
   }
 
+  // Auto-verify when all 6 digits entered
+  useEffect(() => {
+    if (code.length === DIGITS) onVerify();
+  }, [code]);
+
+  const digits = code.split('').concat(Array(DIGITS - code.length).fill(''));
+
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: background }]} edges={['left', 'right', 'bottom']}>
-      <View style={[styles.container, { paddingBottom: Math.max(16, insets.bottom + 16) }]}>
-        <LinearGradient
-          colors={scheme === 'dark' ? ['#0B1220', '#151718'] : ['#E6F8FE', '#EFE8FF']}
-          style={styles.bg}
-        />
+    <SafeAreaView style={styles.safe}>
+      <LinearGradient colors={[NAVY, NAVY_2]} style={StyleSheet.absoluteFill} />
 
-        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} style={styles.backBtn}>
-            <IconSymbol name="chevron.right" size={22} color={icon} style={{ transform: [{ rotate: '180deg' }] }} />
+      <KeyboardAvoidingView
+        style={styles.kav}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.inner}>
+
+          {/* Back */}
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <IconSymbol name="arrow.left" size={16} color="rgba(255,255,255,0.60)" />
+            <ThemedText style={styles.backText}>Back</ThemedText>
           </Pressable>
-          <View style={styles.headerCenter}>
-            <LogoMark size={30} />
-            <ThemedText style={[styles.brand, { color: text }]}>Verify</ThemedText>
-          </View>
-          <View style={styles.backBtn} />
-        </View>
 
-        <View style={[styles.card, { backgroundColor: surface, borderColor: hairline }]}>
-          <ThemedText style={[styles.title, { color: text }]}>Enter the 6‑digit code</ThemedText>
-          <ThemedText style={[styles.subtitle, { color: subText }]}>
-            Sent to {display}
-          </ThemedText>
-
-          <View style={[styles.codeWrap, { borderColor: hairline }]}>
-            <TextInput
-              ref={(r) => {
-                inputRef.current = r;
-              }}
-              value={code}
-              onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
-              keyboardType="number-pad"
-              returnKeyType="done"
-              maxLength={6}
-              style={[styles.codeInput, { color: text }]}
-              selectTextOnFocus
-              autoFocus
-              onSubmitEditing={onVerify}
-            />
-          </View>
-
-          <View style={styles.metaRow}>
-            <ThemedText style={[styles.meta, { color: subText }]}>
-              {seconds > 0 ? `Resend in ${seconds}s` : 'Didn’t get a code?'}
+          {/* Hero */}
+          <View style={styles.hero}>
+            <View style={styles.heroIcon}>
+              <IconSymbol name="lock.fill" size={28} color={TEAL} />
+            </View>
+            <ThemedText style={styles.heroTitle}>Enter the code</ThemedText>
+            <ThemedText style={styles.heroSub}>
+              Sent to <ThemedText style={styles.heroPhone}>{phone}</ThemedText>
             </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onResend}
-              disabled={seconds > 0}
-              style={[styles.linkBtn, { opacity: seconds > 0 ? 0.4 : 1 }]}>
-              <ThemedText style={[styles.linkText, { color: '#00AEEF' }]}>Resend</ThemedText>
-            </Pressable>
           </View>
 
+          {/* Hidden input captures typing */}
+          <TextInput
+            ref={inputRef}
+            value={code}
+            onChangeText={v => { setCode(v.replace(/\D/g, '').slice(0, DIGITS)); setError(''); }}
+            keyboardType="number-pad"
+            maxLength={DIGITS}
+            style={styles.hiddenInput}
+            autoFocus
+            caretHidden
+          />
+
+          {/* 6 digit boxes */}
+          <Pressable onPress={() => inputRef.current?.focus()} style={styles.digitRow}>
+            {digits.map((d, i) => {
+              const active = i === code.length;
+              const filled = d !== '';
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.digitBox,
+                    filled && { borderColor: TEAL, backgroundColor: 'rgba(0,201,177,0.10)' },
+                    active && !filled && { borderColor: ACCENT },
+                    error && { borderColor: DANGER },
+                  ]}
+                >
+                  {loading && filled
+                    ? <ActivityIndicator size="small" color={TEAL} />
+                    : <ThemedText style={[styles.digitText, filled && { color: '#fff' }]}>
+                      {d || ''}
+                    </ThemedText>
+                  }
+                </View>
+              );
+            })}
+          </Pressable>
+
+          {/* Error */}
+          {error ? (
+            <View style={styles.errorRow}>
+              <IconSymbol name="exclamationmark.circle.fill" size={13} color={DANGER} />
+              <ThemedText style={styles.errorText}>{error}</ThemedText>
+            </View>
+          ) : null}
+
+          {/* Resent confirmation */}
+          {resent ? (
+            <View style={styles.resentRow}>
+              <IconSymbol name="checkmark.circle.fill" size={13} color={TEAL} />
+              <ThemedText style={styles.resentText}>Code resent successfully</ThemedText>
+            </View>
+          ) : null}
+
+          {/* Verify button */}
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Verify"
             onPress={onVerify}
-            disabled={!canVerify || verifying || verified}
-            style={[
-              styles.primary,
-              { backgroundColor: '#00AEEF', opacity: !canVerify || verifying || verified ? 0.55 : 1 },
+            disabled={code.length < DIGITS || loading}
+            style={[styles.btn, { opacity: code.length < DIGITS || loading ? 0.42 : 1 }]}
+          >
+            <LinearGradient
+              colors={[ACCENT, '#FF4500']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.btnGrad}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <ThemedText style={styles.btnText}>Verify →</ThemedText>
+              }
+            </LinearGradient>
+          </Pressable>
+
+          {/* Resend */}
+          <Pressable
+            onPress={onResend}
+            disabled={resending || countdown > 0}
+            style={styles.resendBtn}
+          >
+            <ThemedText style={[
+              styles.resendText,
+              (resending || countdown > 0) && { opacity: 0.40 },
             ]}>
-            <ThemedText style={styles.primaryText}>
-              {verified ? 'Verified' : verifying ? 'Verifying…' : 'Verify'}
+              {countdown > 0
+                ? `Resend code in ${countdown}s`
+                : resending ? 'Resending…' : "Didn't get a code? Resend"
+              }
             </ThemedText>
           </Pressable>
+
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  container: { flex: 1, paddingHorizontal: 16 },
-  bg: { position: 'absolute', left: 0, right: 0, top: 0, height: 520 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 14,
-  },
-  backBtn: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brand: { fontSize: 18, fontWeight: '900' },
-  card: { borderRadius: 22, borderWidth: 1, padding: 16, gap: 10 },
-  title: { fontSize: 20, lineHeight: 26, fontWeight: '900' },
-  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '600', opacity: 0.9 },
-  codeWrap: { height: 58, borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, justifyContent: 'center', marginTop: 8 },
-  codeInput: {
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 8,
-    textAlign: 'center',
-    padding: 0,
-  },
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
-  meta: { fontSize: 12, lineHeight: 16, fontWeight: '600', opacity: 0.85 },
-  linkBtn: { paddingVertical: 8, paddingHorizontal: 6 },
-  linkText: { fontSize: 12, fontWeight: '900' },
-  primary: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  primaryText: { color: 'white', fontSize: 15, fontWeight: '900' },
-});
+  safe: { flex: 1, backgroundColor: NAVY },
+  kav: { flex: 1 },
+  inner: { flex: 1, paddingHorizontal: 24, paddingTop: 16, gap: 20 },
 
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
+  backText: { color: 'rgba(255,255,255,0.60)', fontSize: 14, fontWeight: '700' },
+
+  hero: { gap: 10, marginTop: 16 },
+  heroIcon: {
+    width: 56, height: 56, borderRadius: 16,
+    backgroundColor: 'rgba(0,201,177,0.12)',
+    borderWidth: 1, borderColor: 'rgba(0,201,177,0.22)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heroTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
+  heroSub: { color: 'rgba(255,255,255,0.50)', fontSize: 14, fontWeight: '600' },
+  heroPhone: { color: '#fff', fontWeight: '800' },
+
+  hiddenInput: {
+    position: 'absolute', width: 0, height: 0, opacity: 0,
+  },
+
+  digitRow: { flexDirection: 'row', gap: 10, justifyContent: 'center' },
+  digitBox: {
+    width: 46, height: 54, borderRadius: 14,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  digitText: {
+    fontSize: 22, fontWeight: '900',
+    color: 'rgba(255,255,255,0.20)',
+  },
+
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  errorText: { color: '#EF4444', fontSize: 13, fontWeight: '700' },
+  resentRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  resentText: { color: '#00C9B1', fontSize: 13, fontWeight: '700' },
+
+  btn: { borderRadius: 14, overflow: 'hidden' },
+  btnGrad: { height: 52, alignItems: 'center', justifyContent: 'center' },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+
+  resendBtn: { alignItems: 'center', paddingVertical: 4 },
+  resendText: { color: 'rgba(255,255,255,0.50)', fontSize: 13, fontWeight: '700' },
+}) as any;

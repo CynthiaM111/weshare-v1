@@ -1,154 +1,178 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import LogoMark from '@/components/LogoMark';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { getRide, type Ride } from '@/lib/rides';
+import { Colors, Radius, Shadow } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
+import { useThemeColors } from '@/hooks/use-theme-color';
+import { listBookingsForRide, updateBookingStatus, type Booking } from '@/lib/bookings';
+import { getRide, updateRideStatus, type Ride } from '@/lib/rides';
+import { getProfile, type UserProfile } from '@/lib/auth/users';
 
-function formatDepart(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
+type BookingRow = Booking & { passengerProfile: UserProfile | null };
+
+const STATUS_COLOR: Record<string, string> = {
+  pending: '#F59E0B',
+  confirmed: Colors.success,
+  cancelled: Colors.danger,
+  completed: Colors.info,
+};
 
 export default function RideDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-
-  const background = useThemeColor({}, 'background');
-  const text = useThemeColor({}, 'text');
-  const icon = useThemeColor({}, 'icon');
-  const hairline = useThemeColor({ light: 'rgba(15,23,42,0.10)', dark: 'rgba(236,237,238,0.14)' }, 'background');
-  const surface = useThemeColor({ light: '#FFFFFF', dark: '#202227' }, 'background');
-  const subText = useThemeColor({ light: 'rgba(17,24,28,0.68)', dark: 'rgba(236,237,238,0.72)' }, 'text');
+  const c = useThemeColors();
+  const { session } = useSession();
 
   const [ride, setRide] = useState<Ride | null>(null);
+  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!id) return;
-      const r = await getRide(String(id));
-      if (!cancelled) setRide(r);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  async function load() {
+    if (!id) return;
+    const [r, bList] = await Promise.all([getRide(id), listBookingsForRide(id)]);
+    setRide(r);
+    const withProfiles = await Promise.all(
+      bList.map(async b => ({ ...b, passengerProfile: await getProfile(b.passengerId) }))
+    );
+    setBookings(withProfiles);
+  }
 
-  const title = useMemo(() => {
-    if (!ride) return 'Ride';
-    return 'Your posted ride';
-  }, [ride]);
+  useEffect(() => { load().finally(() => setLoading(false)); }, [id]);
+  async function onRefresh() { setRefreshing(true); await load(); setRefreshing(false); }
+
+  async function onBookingAction(bookingId: string, status: Booking['status']) {
+    await updateBookingStatus(bookingId, status);
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b));
+  }
+
+  async function onCompleteRide() {
+    if (!id) return;
+    await updateRideStatus(id, 'completed');
+    setRide(prev => prev ? { ...prev, status: 'completed' } : prev);
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+        <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!ride) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+        <View style={styles.center}>
+          <ThemedText style={[styles.title, { color: c.text }]}>Ride not found</ThemedText>
+          <Pressable onPress={() => router.back()} style={styles.btn}><ThemedText style={styles.btnText}>Back</ThemedText></Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const isOwner = session?.userId === ride.postedByUserId;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: background }]} edges={['left', 'right', 'bottom']}>
-      <ThemedView style={[styles.header, { paddingTop: insets.top + 6 }]} lightColor="transparent" darkColor="transparent">
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} style={styles.headerBtn}>
-          <IconSymbol name="chevron.right" size={22} color={icon} style={{ transform: [{ rotate: '180deg' }] }} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: c.hairline }]}>
+        <Pressable onPress={() => router.back()}>
+          <ThemedText style={[styles.back, { color: Colors.accent }]}>← Back</ThemedText>
         </Pressable>
-        <View style={styles.headerCenter}>
-          <LogoMark size={26} />
-          <ThemedText style={[styles.headerTitle, { color: text }]} numberOfLines={1}>
-            {title}
-          </ThemedText>
-        </View>
-        <View style={styles.headerBtn} />
-      </ThemedView>
+        <ThemedText style={[styles.title, { color: c.text }]}>Ride Details</ThemedText>
+      </View>
 
-      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: Math.max(16, insets.bottom + 16) }]}>
-        {!ride ? (
-          <ThemedText style={[styles.lede, { color: subText }]}>Loading…</ThemedText>
-        ) : (
-          <View style={[styles.card, { backgroundColor: surface, borderColor: hairline }]}>
-            <Row label="From" value={ride.from} text={text} subText={subText} />
-            <Row label="To" value={ride.to} text={text} subText={subText} />
-            <Row label="Departure" value={formatDepart(ride.departAtISO)} text={text} subText={subText} />
-            <Row label="Seats" value={String(ride.seats)} text={text} subText={subText} />
-            <Row label="Price" value={ride.priceRwf ? `${ride.priceRwf} RWF / seat` : '—'} text={text} subText={subText} />
-            {ride.note ? <Row label="Note" value={ride.note} text={text} subText={subText} /> : null}
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Ride summary */}
+        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.hairline }, Shadow.card]}>
+          <ThemedText style={[styles.route, { color: c.text }]}>{ride.fromShort} → {ride.toShort}</ThemedText>
+          <ThemedText style={[styles.meta, { color: c.subText }]}>
+            {new Date(ride.departAtISO).toLocaleString()} · {ride.seats} seats · RWF {ride.priceRwf.toLocaleString()}/seat
+          </ThemedText>
+          <View style={[styles.badge, { backgroundColor: STATUS_COLOR[ride.status] + '22', alignSelf: 'flex-start' }]}>
+            <ThemedText style={[styles.badgeText, { color: STATUS_COLOR[ride.status] }]}>{ride.status}</ThemedText>
           </View>
+          {ride.note ? <ThemedText style={[styles.note, { color: c.subText }]}>{ride.note}</ThemedText> : null}
+        </View>
+
+        {/* Complete ride button */}
+        {isOwner && ride.status === 'active' && (
+          <Pressable onPress={onCompleteRide} style={[styles.btn, { backgroundColor: Colors.success }]}>
+            <ThemedText style={styles.btnText}>Mark ride as completed</ThemedText>
+          </Pressable>
         )}
 
-        <Pressable accessibilityRole="button" onPress={() => router.replace('/my-rides')} style={[styles.secondary, { borderColor: hairline }]}>
-          <ThemedText style={[styles.secondaryText, { color: text }]}>Go to My Rides</ThemedText>
-          <IconSymbol name="chevron.right" size={18} color={icon} />
-        </Pressable>
+        {/* Bookings list */}
+        <ThemedText style={[styles.sectionTitle, { color: c.text }]}>
+          Bookings ({bookings.length})
+        </ThemedText>
+
+        {bookings.length === 0 ? (
+          <View style={[styles.emptyBox, { backgroundColor: c.surface, borderColor: c.hairline }]}>
+            <ThemedText style={[styles.meta, { color: c.subText }]}>No bookings yet for this ride.</ThemedText>
+          </View>
+        ) : bookings.map(b => (
+          <View key={b.id} style={[styles.bookingCard, { backgroundColor: c.surface, borderColor: c.hairline }]}>
+            <View style={styles.bookingTop}>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={[styles.passengerName, { color: c.text }]}>
+                  {b.passengerProfile?.fullName ?? 'Unknown passenger'}
+                </ThemedText>
+                <ThemedText style={[styles.meta, { color: c.subText }]}>
+                  {b.seats} seat{b.seats > 1 ? 's' : ''} · RWF {(ride.priceRwf * b.seats).toLocaleString()}
+                </ThemedText>
+              </View>
+              <View style={[styles.badge, { backgroundColor: STATUS_COLOR[b.status] + '22' }]}>
+                <ThemedText style={[styles.badgeText, { color: STATUS_COLOR[b.status] }]}>{b.status}</ThemedText>
+              </View>
+            </View>
+
+            {isOwner && b.status === 'pending' && (
+              <View style={styles.actions}>
+                <Pressable onPress={() => onBookingAction(b.id, 'confirmed')} style={[styles.actionBtn, { backgroundColor: Colors.success }]}>
+                  <ThemedText style={styles.actionText}>Confirm</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => onBookingAction(b.id, 'cancelled')} style={[styles.actionBtn, { backgroundColor: Colors.danger }]}>
+                  <ThemedText style={styles.actionText}>Decline</ThemedText>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Row({
-  label,
-  value,
-  text,
-  subText,
-}: {
-  label: string;
-  value: string;
-  text: string;
-  subText: string;
-}) {
-  return (
-    <View style={styles.row}>
-      <ThemedText style={[styles.rowLabel, { color: subText }]}>{label}</ThemedText>
-      <ThemedText style={[styles.rowValue, { color: text }]}>{value}</ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '900', maxWidth: 220 },
-  container: { paddingHorizontal: 16, gap: 14 },
-  lede: { fontSize: 13, lineHeight: 18, fontWeight: '700', opacity: 0.9 },
-  card: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 14,
-    gap: 12,
-  },
-  row: { gap: 6 },
-  rowLabel: { fontSize: 12, fontWeight: '800', opacity: 0.9 },
-  rowValue: { fontSize: 14, fontWeight: '800', lineHeight: 18 },
-  secondary: {
-    height: 50,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  secondaryText: { fontSize: 14, fontWeight: '900' },
-});
-
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 24 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1 },
+  back: { fontSize: 15, fontWeight: '700' },
+  title: { fontSize: 20, fontWeight: '900' },
+  scroll: { padding: 16, gap: 12 },
+  card: { borderRadius: Radius.lg, borderWidth: 1, padding: 14, gap: 6 },
+  route: { fontSize: 17, fontWeight: '900' },
+  meta: { fontSize: 13, fontWeight: '600' },
+  badge: { borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  note: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  btn: { height: 50, borderRadius: Radius.lg, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+  btnText: { color: 'white', fontSize: 14, fontWeight: '900' },
+  sectionTitle: { fontSize: 16, fontWeight: '900', marginTop: 4 },
+  emptyBox: { borderRadius: Radius.md, borderWidth: 1, padding: 14 },
+  bookingCard: { borderRadius: Radius.lg, borderWidth: 1, padding: 14, gap: 10 },
+  bookingTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  passengerName: { fontSize: 15, fontWeight: '800' },
+  actions: { flexDirection: 'row', gap: 10 },
+  actionBtn: { flex: 1, height: 36, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
+  actionText: { color: 'white', fontSize: 13, fontWeight: '900' },
+}) as any;

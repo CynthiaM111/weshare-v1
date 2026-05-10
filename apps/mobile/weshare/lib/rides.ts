@@ -1,92 +1,138 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-export type RideCoord = { latitude: number; longitude: number };
+import { supabase } from './supabase';
 
 export type Ride = {
   id: string;
+  postedByUserId: string;
   from: string;
+  fromShort: string;
+  fromLat: number | null;
+  fromLng: number | null;
   to: string;
-  departAtISO: string; // ISO string
+  toShort: string;
+  toLat: number | null;
+  toLng: number | null;
+  departAtISO: string;
   seats: number;
-  priceRwf?: number;
+  priceRwf: number;
   note?: string;
-  postedByUserId?: string;
-  fromCoord?: RideCoord;
-  toCoord?: RideCoord;
+  status: 'active' | 'completed' | 'cancelled';
   createdAtISO: string;
 };
 
-// Note: earlier builds used a misspelled storage key ("rids").
-// We keep backward compatibility by reading both and migrating forward.
-const STORAGE_KEY = 'weshare:rides:v1';
-const LEGACY_STORAGE_KEY = 'weshare:rids:v1';
-
-function newId() {
-  return `ride_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+function rowToRide(row: any): Ride {
+  return {
+    id: row.id,
+    postedByUserId: row.posted_by,
+    from: row.from_address,
+    fromShort: row.from_short,
+    fromLat: row.from_lat,
+    fromLng: row.from_lng,
+    to: row.to_address,
+    toShort: row.to_short,
+    toLat: row.to_lat,
+    toLng: row.to_lng,
+    departAtISO: row.depart_at,
+    seats: row.seats,
+    priceRwf: row.price_rwf,
+    note: row.note ?? undefined,
+    status: row.status ?? 'active',
+    createdAtISO: row.created_at,
+  };
 }
 
 export async function listRides(): Promise<Ride[]> {
-  const [raw, legacyRaw] = await Promise.all([
-    AsyncStorage.getItem(STORAGE_KEY),
-    AsyncStorage.getItem(LEGACY_STORAGE_KEY),
-  ]);
+  const { data, error } = await supabase
+    .from('rides')
+    .select('*')
+    .eq('status', 'active')
+    .order('depart_at', { ascending: true });
 
-  const parsed = safeParseArray(raw);
-  const legacyParsed = safeParseArray(legacyRaw);
-
-  // Merge & de-duplicate by id (prefer current).
-  const byId = new Map<string, Ride>();
-  for (const r of legacyParsed) byId.set(r.id, r);
-  for (const r of parsed) byId.set(r.id, r);
-
-  const merged = Array.from(byId.values());
-  merged.sort((a, b) => (b.createdAtISO ?? '').localeCompare(a.createdAtISO ?? ''));
-
-  // One-time migrate legacy -> current key (best effort).
-  if (legacyParsed.length && !parsed.length) {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-  }
-
-  return merged;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(rowToRide);
 }
 
-export async function saveRide(input: Omit<Ride, 'id' | 'createdAtISO'>): Promise<Ride> {
-  const ride: Ride = {
-    ...input,
-    id: newId(),
-    createdAtISO: new Date().toISOString(),
-  };
-  const rides = await listRides();
-  const next = [ride, ...rides];
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  return ride;
+/** Removes all rows from `rides` (e.g. clearing local/sample data). Requires appropriate RLS/policy. */
+export async function clearRides(): Promise<void> {
+  const { error } = await supabase.from('rides').delete();
+  if (error) throw new Error(error.message);
 }
 
 export async function getRide(id: string): Promise<Ride | null> {
-  const rides = await listRides();
-  return rides.find((r) => r.id === id) ?? null;
+  const { data, error } = await supabase
+    .from('rides')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+  return rowToRide(data);
 }
 
-export async function listRidesByUser(userId: string): Promise<Ride[]> {
-  const rides = await listRides();
-  return rides.filter((r) => r.postedByUserId === userId);
+export async function listMyRides(userId: string): Promise<Ride[]> {
+  const { data, error } = await supabase
+    .from('rides')
+    .select('*')
+    .eq('posted_by', userId)
+    .order('depart_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(rowToRide);
 }
 
-export async function clearRides() {
-  await Promise.all([
-    AsyncStorage.removeItem(STORAGE_KEY),
-    AsyncStorage.removeItem(LEGACY_STORAGE_KEY),
-  ]);
+export async function createRide(
+  userId: string,
+  fields: Omit<Ride, 'id' | 'postedByUserId' | 'status' | 'createdAtISO'>
+): Promise<Ride> {
+  const { data, error } = await supabase
+    .from('rides')
+    .insert({
+      posted_by: userId,
+      from_address: fields.from,
+      from_short: fields.fromShort,
+      from_lat: fields.fromLat,
+      from_lng: fields.fromLng,
+      to_address: fields.to,
+      to_short: fields.toShort,
+      to_lat: fields.toLat,
+      to_lng: fields.toLng,
+      depart_at: fields.departAtISO,
+      seats: fields.seats,
+      price_rwf: fields.priceRwf,
+      note: fields.note ?? null,
+      status: 'active',
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return rowToRide(data);
 }
 
-function safeParseArray(raw: string | null): Ride[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as Ride[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
-  }
+export async function updateRideStatus(
+  rideId: string,
+  status: 'active' | 'completed' | 'cancelled'
+): Promise<string | null> {
+  const { error } = await supabase
+    .from('rides')
+    .update({ status })
+    .eq('id', rideId);
+  return error ? error.message : null;
 }
 
+/**
+ * Search rides by short city names.
+ * Matches from_short against `from` query and to_short against `to` query.
+ * Uses Supabase ilike for case-insensitive partial matching.
+ */
+export async function searchRides(fromQuery: string, toQuery: string): Promise<Ride[]> {
+  const { data, error } = await supabase
+    .from('rides')
+    .select('*')
+    .eq('status', 'active')
+    .ilike('from_short', `%${fromQuery.trim()}%`)
+    .ilike('to_short', `%${toQuery.trim()}%`)
+    .order('depart_at', { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(rowToRide);
+}

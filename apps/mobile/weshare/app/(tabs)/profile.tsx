@@ -1,111 +1,129 @@
+import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import LogoMark from '@/components/LogoMark';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { clearSession, loadSession, type AuthSession } from '@/lib/auth/session';
-import { getUserByPhone, type UserProfile } from '@/lib/auth/users';
+import { Colors, Radius, Shadow } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
+import { useThemeColors } from '@/hooks/use-theme-color';
+import { clearSession } from '@/lib/auth/session';
+import { upsertProfile } from '@/lib/auth/users';
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase().slice(0, 2);
+}
 
 export default function ProfileScreen() {
+  const isFocused = useIsFocused();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const c = useThemeColors();
+  const { session, profile, refreshProfile } = useSession();
 
-  const background = useThemeColor({}, 'background');
-  const text = useThemeColor({}, 'text');
-  const icon = useThemeColor({}, 'icon');
-  const hairline = useThemeColor({ light: 'rgba(15,23,42,0.10)', dark: 'rgba(236,237,238,0.14)' }, 'background');
-  const surface = useThemeColor({ light: '#FFFFFF', dark: '#202227' }, 'background');
-  const subText = useThemeColor({ light: 'rgba(17,24,28,0.68)', dark: 'rgba(236,237,238,0.72)' }, 'text');
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(profile?.fullName ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  async function onSave() {
+    if (!session || !name.trim()) return;
+    setSaving(true); setError('');
+    const err = await upsertProfile(session.userId, { fullName: name.trim() });
+    if (err) { setError(err); setSaving(false); return; }
+    await refreshProfile();
+    setSaving(false);
+    setEditing(false);
+  }
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const s = await loadSession();
-      if (cancelled) return;
-      setSession(s);
-      if (s) {
-        const p = await getUserByPhone(s.phoneE164);
-        if (!cancelled) setProfile(p);
-      } else {
-        setProfile(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  async function onLogout() {
+    await clearSession();
+    router.replace('/auth' as any);
+  }
+
+  // Avoid inactive tab scenes painting login/profile UI on top of other tabs (RN Screens stacking glitches).
+  if (!isFocused) {
+    return <View style={[styles.safe, { backgroundColor: c.background }]} />;
+  }
+
+  if (!session) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+        <View style={styles.center}>
+          <ThemedText style={[styles.title, { color: c.text }]}>Profile</ThemedText>
+          <ThemedText style={[styles.sub, { color: c.subText }]}>Login to view your profile</ThemedText>
+          <Pressable onPress={() => router.push('/auth')} style={styles.btn}>
+            <ThemedText style={styles.btnText}>Login</ThemedText>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: background }]} edges={['left', 'right', 'bottom']}>
-      <ThemedView style={[styles.header, { paddingTop: insets.top + 6 }]} lightColor="transparent" darkColor="transparent">
-        <View style={styles.headerBtn} />
-        <View style={styles.headerCenter}>
-          <LogoMark size={26} />
-          <ThemedText style={[styles.headerTitle, { color: text }]}>Profile</ThemedText>
-        </View>
-        <View style={styles.headerBtn} />
-      </ThemedView>
-
-      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: Math.max(16, insets.bottom + 16) }]}>
-        {!session ? (
-          <View style={[styles.card, { backgroundColor: surface, borderColor: hairline }]}>
-            <ThemedText style={[styles.title, { color: text }]}>You’re browsing as a guest</ThemedText>
-            <ThemedText style={[styles.body, { color: subText }]}>
-              Login to post rides and view your posted rides.
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Avatar */}
+        <View style={styles.avatarWrap}>
+          <View style={[styles.avatar, { backgroundColor: Colors.accent }]}>
+            <ThemedText style={styles.avatarText}>
+              {profile?.fullName ? initials(profile.fullName) : '?'}
             </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/auth', params: { redirect: '/profile' } })}
-              style={[styles.primary, { backgroundColor: '#00AEEF' }]}
-            >
-              <ThemedText style={styles.primaryText}>Login</ThemedText>
-            </Pressable>
           </View>
-        ) : (
-          <View style={[styles.card, { backgroundColor: surface, borderColor: hairline }]}>
-            <View style={styles.row}>
-              <IconSymbol name="person.circle.fill" size={28} color={icon} />
-              <View style={{ flex: 1 }}>
-                <ThemedText style={[styles.title, { color: text }]} numberOfLines={1}>
-                  {profile?.fullName ?? 'Welcome'}
-                </ThemedText>
-                <ThemedText style={[styles.body, { color: subText }]} numberOfLines={1}>
-                  {session.phoneE164}
-                </ThemedText>
-              </View>
-            </View>
+          {editing ? (
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              style={[styles.nameInput, { color: c.text, borderColor: c.hairline, backgroundColor: c.inputBg }]}
+              placeholder="Full name"
+              placeholderTextColor={c.subText}
+              autoFocus
+            />
+          ) : (
+            <ThemedText style={[styles.name, { color: c.text }]}>{profile?.fullName ?? '—'}</ThemedText>
+          )}
+          <ThemedText style={[styles.phone, { color: c.subText }]}>{session.phoneE164}</ThemedText>
+        </View>
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/my-rides')}
-              style={[styles.secondary, { borderColor: hairline }]}
-            >
-              <ThemedText style={[styles.secondaryText, { color: text }]}>My Rides</ThemedText>
-              <IconSymbol name="chevron.right" size={18} color={icon} />
-            </Pressable>
+        {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={async () => {
-                await clearSession();
-                setSession(null);
-                router.replace('/');
-              }}
-              style={[styles.secondary, { borderColor: hairline }]}
-            >
-              <ThemedText style={[styles.secondaryText, { color: '#EF4444' }]}>Logout</ThemedText>
-              <IconSymbol name="arrow.right.square" size={18} color="#EF4444" />
+        {/* Actions */}
+        <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.hairline }]}>
+          {editing ? (
+            <>
+              <Pressable onPress={onSave} disabled={saving} style={[styles.row, { borderBottomColor: c.hairline }]}>
+                {saving ? <ActivityIndicator color={Colors.accent} size="small" /> : null}
+                <ThemedText style={[styles.rowText, { color: Colors.accent }]}>
+                  {saving ? 'Saving…' : 'Save name'}
+                </ThemedText>
+              </Pressable>
+              <Pressable onPress={() => { setEditing(false); setName(profile?.fullName ?? ''); }} style={styles.row}>
+                <ThemedText style={[styles.rowText, { color: c.subText }]}>Cancel</ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable onPress={() => setEditing(true)} style={[styles.row, { borderBottomColor: c.hairline }]}>
+              <ThemedText style={[styles.rowText, { color: c.text }]}>Edit name</ThemedText>
             </Pressable>
-          </View>
-        )}
+          )}
+
+          <Pressable onPress={() => router.push('/my-rides')} style={[styles.row, { borderBottomColor: c.hairline }]}>
+            <ThemedText style={[styles.rowText, { color: c.text }]}>My rides</ThemedText>
+          </Pressable>
+
+          <Pressable onPress={() => router.push('/my-bookings')} style={styles.row}>
+            <ThemedText style={[styles.rowText, { color: c.text }]}>My bookings</ThemedText>
+          </Pressable>
+        </View>
+
+        <Pressable onPress={onLogout} style={[styles.logoutBtn, { borderColor: Colors.danger + '44' }]}>
+          <ThemedText style={styles.logoutText}>Logout</ThemedText>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -113,32 +131,25 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 24 },
+  scroll: { paddingHorizontal: 20, gap: 20 },
+  title: { fontSize: 24, fontWeight: '900' },
+  sub: { fontSize: 14, fontWeight: '600' },
+  btn: { height: 44, paddingHorizontal: 24, borderRadius: Radius.lg, backgroundColor: Colors.accent, justifyContent: 'center', alignItems: 'center' },
+  btnText: { color: 'white', fontSize: 14, fontWeight: '900' },
+  avatarWrap: { alignItems: 'center', gap: 10, paddingTop: 8 },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: 'white', fontSize: 28, fontWeight: '900' },
+  name: { fontSize: 22, fontWeight: '900' },
+  phone: { fontSize: 14, fontWeight: '600' },
+  nameInput: {
+    borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 14, height: 44,
+    fontSize: 16, fontWeight: '700', width: 220, textAlign: 'center',
   },
-  headerBtn: { width: 40, height: 40, borderRadius: 14 },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 16, fontWeight: '900' },
-  container: { paddingHorizontal: 16, gap: 14 },
-  card: { borderRadius: 22, borderWidth: 1, padding: 16, gap: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { fontSize: 16, fontWeight: '900' },
-  body: { fontSize: 13, lineHeight: 18, fontWeight: '700', opacity: 0.9, marginTop: 2 },
-  primary: { height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  primaryText: { color: 'white', fontSize: 15, fontWeight: '900' },
-  secondary: {
-    height: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  secondaryText: { fontSize: 14, fontWeight: '900' },
-});
-
+  errorText: { color: Colors.danger, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  section: { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
+  row: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
+  rowText: { fontSize: 15, fontWeight: '700' },
+  logoutBtn: { height: 50, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  logoutText: { color: Colors.danger, fontSize: 15, fontWeight: '800' },
+}) as any;

@@ -12,9 +12,14 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "WeShare uses your location to set your pickup point and help you choose destinations in Rwanda."
+      },
+      "bundleIdentifier": "com.weshare.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyDvZQja7oqpK6iUX8baYfJAtErs_ZY2jMk"
       }
     },
     "android": {
+      "package": "com.weshare.app",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
@@ -26,7 +31,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDvZQja7oqpK6iUX8baYfJAtErs_ZY2jMk"
+        }
+      }
     },
     "web": {
       "output": "static",

@@ -1,44 +1,42 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import type { NormalizedRwandanPhone } from './phone';
+import { supabase } from '../supabase';
 
 export type UserProfile = {
-  userId: string;
+  id: string;
+  phoneE164: string;
   fullName: string;
-  phoneE164: NormalizedRwandanPhone;
-  createdAtISO: string;
+  avatarUrl?: string;
+  createdAt: string;
 };
 
-const USERS_KEY = 'weshare:users:v1';
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
 
-async function loadAll(): Promise<UserProfile[]> {
-  const raw = await AsyncStorage.getItem(USERS_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as UserProfile[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
-  }
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    phoneE164: data.phone,
+    fullName: data.full_name ?? '',
+    avatarUrl: data.avatar_url ?? undefined,
+    createdAt: data.created_at,
+  };
 }
 
-async function saveAll(users: UserProfile[]) {
-  await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
+export const getUserById = getProfile;
 
-export async function getUserByPhone(phoneE164: NormalizedRwandanPhone): Promise<UserProfile | null> {
-  const users = await loadAll();
-  return users.find((u) => u.phoneE164 === phoneE164) ?? null;
+export async function upsertProfile(
+  userId: string,
+  fields: { fullName?: string; phoneE164?: string }
+): Promise<string | null> {
+  const { error } = await supabase.from('profiles').upsert({
+    id: userId,
+    full_name: fields.fullName,
+    phone: fields.phoneE164,
+    updated_at: new Date().toISOString(),
+  });
+  return error ? error.message : null;
 }
-
-export async function upsertUser(profile: UserProfile): Promise<UserProfile> {
-  const users = await loadAll();
-  const idx = users.findIndex((u) => u.userId === profile.userId || u.phoneE164 === profile.phoneE164);
-  const next = [...users];
-  if (idx >= 0) next[idx] = profile;
-  else next.unshift(profile);
-  await saveAll(next);
-  return profile;
-}
-

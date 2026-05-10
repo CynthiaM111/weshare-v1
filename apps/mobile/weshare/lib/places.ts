@@ -1,181 +1,322 @@
 export type PlaceSuggestion = {
   id: string;
-  primaryText: string;
-  secondaryText?: string;
-  fullText: string;
-  source: 'google';
+  shortLabel: string;  // bold line shown in UI — e.g. "Kimironko Market"
+  subLabel: string;    // muted line shown in UI — e.g. "Kigali"
+  fullAddress: string; // stored in DB, never shown
+  coords?: { latitude: number; longitude: number };
+  source: 'google' | 'osm';
 };
 
-export type LatLng = { latitude: number; longitude: number };
+const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-export type OsmSuggestion = {
+export function hasPlacesKey(): boolean {
+  return Boolean(GOOGLE_KEY);
+}
+
+function parseLabels(fullText: string): { shortLabel: string; subLabel: string } {
+  const parts = fullText.split(',').map(p => p.trim()).filter(Boolean);
+  const shortLabel = parts[0] ?? fullText;
+  const sub = parts
+    .slice(1)
+    .filter(p => p.toLowerCase() !== 'rwanda' && p.length > 1)
+    .slice(0, 2)
+    .join(', ');
+  return { shortLabel, subLabel: sub };
+}
+
+// ─── Google Places (New API v1) ───────────────────────────────────────────────
+
+type GoogleResult = {
   id: string;
   fullText: string;
-  coords: LatLng;
-  source: 'osm';
+  shortLabel: string;
+  subLabel: string;
 };
-
-function apiKey() {
-  // Set this in `.env` or your EAS env:
-  // EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=...
-  return process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-}
-
-export function hasPlacesKey() {
-  return Boolean(apiKey());
-}
 
 export async function googlePlacesAutocomplete(opts: {
   input: string;
-  country?: string; // e.g. 'rw'
-  locationBias?: LatLng;
-  radiusMeters?: number;
+  country?: string;
+  locationBias?: { latitude: number; longitude: number };
   limit?: number;
-}): Promise<PlaceSuggestion[]> {
-  const key = apiKey();
-  if (!key) return [];
+}): Promise<GoogleResult[]> {
+  if (!GOOGLE_KEY) return [];
 
-  const params = new URLSearchParams();
-  params.set('input', opts.input);
-  params.set('key', key);
-  params.set('language', 'en');
-  if (opts.country) params.set('components', `country:${opts.country}`);
+  const body: Record<string, any> = {
+    input: opts.input,
+    languageCode: 'en',
+  };
+
+  if (opts.country) body.includedRegionCodes = [opts.country];
+
   if (opts.locationBias) {
-    params.set('location', `${opts.locationBias.latitude},${opts.locationBias.longitude}`);
-    params.set('radius', String(opts.radiusMeters ?? 40000));
+    body.locationBias = {
+      circle: {
+        center: {
+          latitude: opts.locationBias.latitude,
+          longitude: opts.locationBias.longitude,
+        },
+      },
+    };
   }
 
-  const res = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params.toString()}`);
-  if (!res.ok) return [];
-  const json = (await res.json()) as any;
-  const preds: any[] = json?.predictions ?? [];
-  const limit = opts.limit ?? 6;
+  try {
+    const res = await fetch(
+      'https://places.googleapis.com/v1/places:autocomplete',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_KEY,
+        },
+        body: JSON.stringify(body),
+      }
+    );
 
-  return preds.slice(0, limit).map((p) => {
-    const structured = p.structured_formatting ?? {};
-    const primaryText = structured.main_text ?? p.description ?? '';
-    const secondaryText = structured.secondary_text;
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn('[Places] Google autocomplete error:', res.status, errText);
+      return [];
+    }
+
+    const json = await res.json();
+    const suggestions = json.suggestions ?? [];
+
+    return suggestions
+      .slice(0, opts.limit ?? 6)
+      .map((s: any) => {
+        const prediction = s.placePrediction;
+        const fullText: string =
+          prediction?.text?.text ??
+          prediction?.structuredFormat?.mainText?.text ?? '';
+        const { shortLabel, subLabel } = parseLabels(fullText);
+        return { id: prediction?.placeId ?? '', fullText, shortLabel, subLabel };
+      })
+      .filter((s: GoogleResult) => s.id && s.fullText);
+  } catch (e) {
+    console.warn('[Places] Google autocomplete threw:', e);
+    return [];
+  }
+}
+
+export async function googlePlaceDetails(placeId: string): Promise<{
+  formattedAddress: string;
+  shortLabel: string;
+  subLabel: string;
+  coords: { latitude: number; longitude: number };
+} | null> {
+  if (!GOOGLE_KEY) return null;
+
+  try {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/places/${placeId}?fields=formattedAddress,location`,
+      {
+        headers: {
+          'X-Goog-Api-Key': GOOGLE_KEY,
+          'X-Goog-FieldMask': 'formattedAddress,location',
+        },
+      }
+    );
+
+    if (!res.ok) {
+      console.warn('[Places] Google place details error:', res.status);
+      return null;
+    }
+
+    const json = await res.json();
+    const addr: string = json.formattedAddress ?? '';
+    const loc = json.location;
+    if (!loc) return null;
+
+    const { shortLabel, subLabel } = parseLabels(addr);
     return {
-      id: p.place_id,
-      primaryText,
-      secondaryText,
-      fullText: p.description ?? primaryText,
-      source: 'google' as const,
+      formattedAddress: addr,
+      shortLabel,
+      subLabel,
+      coords: { latitude: loc.latitude, longitude: loc.longitude },
     };
-  });
+  } catch (e) {
+    console.warn('[Places] Google place details threw:', e);
+    return null;
+  }
 }
 
-export async function googlePlaceDetails(placeId: string): Promise<{ coords: LatLng; formattedAddress: string } | null> {
-  const key = apiKey();
-  if (!key) return null;
+// ─── Nominatim OSM fallback ───────────────────────────────────────────────────
 
-  const params = new URLSearchParams();
-  params.set('place_id', placeId);
-  params.set('fields', 'geometry/location,formatted_address,name');
-  params.set('key', key);
-
-  const res = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?${params.toString()}`);
-  if (!res.ok) return null;
-  const json = (await res.json()) as any;
-  const result = json?.result;
-  const loc = result?.geometry?.location;
-  const formatted = result?.formatted_address ?? result?.name;
-  if (loc?.lat == null || loc?.lng == null || !formatted) return null;
-  return {
-    coords: { latitude: loc.lat, longitude: loc.lng },
-    formattedAddress: formatted,
-  };
-}
-
-function nominatimHeaders() {
-  // Nominatim usage policy asks for a valid User-Agent / Referer.
-  // On device, we keep this lightweight.
-  return {
-    'Accept-Language': 'en',
-  } as Record<string, string>;
-}
-
-async function nominatimSearch(opts: {
-  q: string;
-  countrycodes?: string; // comma-separated
-  viewbox?: string; // "left,top,right,bottom" (lon/lat)
-  bounded?: boolean;
+export async function nominatimAutocomplete(opts: {
+  input: string;
   limit?: number;
-}): Promise<OsmSuggestion[]> {
-  const params = new URLSearchParams();
-  params.set('format', 'jsonv2');
-  params.set('addressdetails', '1');
-  params.set('q', opts.q);
-  params.set('limit', String(opts.limit ?? 6));
-  if (opts.countrycodes) params.set('countrycodes', opts.countrycodes);
-  if (opts.viewbox) params.set('viewbox', opts.viewbox);
-  if (opts.bounded) params.set('bounded', '1');
+}): Promise<PlaceSuggestion[]> {
+  try {
+    const params = new URLSearchParams({
+      q: opts.input,
+      format: 'json',
+      addressdetails: '1',
+      limit: String(opts.limit ?? 6),
+      countrycodes: 'rw',
+    });
 
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    headers: nominatimHeaders(),
-  });
-  if (!res.ok) return [];
-  const json = (await res.json()) as any[];
-  if (!Array.isArray(json)) return [];
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+      { headers: { 'Accept-Language': 'en', 'User-Agent': 'WeShare/1.0' } }
+    );
 
-  return json
-    .map((r) => {
-      const lat = Number(r.lat);
-      const lon = Number(r.lon);
-      const name = r.display_name as string | undefined;
-      const osmId = r.osm_id ? String(r.osm_id) : `${lat},${lon}`;
-      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !name) return null;
+    if (!res.ok) {
+      console.warn('[Places] Nominatim error:', res.status);
+      return [];
+    }
+
+    const json = await res.json();
+    const rows = Array.isArray(json) ? json : [];
+
+    return (rows as any[]).map((item) => {
+      const fullAddress: string = item.display_name ?? '';
+      const { shortLabel, subLabel } = parseLabels(fullAddress);
       return {
-        id: `osm:${osmId}`,
-        fullText: name,
-        coords: { latitude: lat, longitude: lon },
+        id: String(item.place_id),
+        shortLabel,
+        subLabel,
+        fullAddress,
+        coords: {
+          latitude: parseFloat(item.lat),
+          longitude: parseFloat(item.lon),
+        },
         source: 'osm' as const,
       };
-    })
-    .filter(Boolean) as OsmSuggestion[];
+    });
+  } catch (e) {
+    console.warn('[Places] Nominatim threw:', e);
+    return [];
+  }
 }
 
-/**
- * Autocomplete via OpenStreetMap Nominatim (no key required).
- * Prioritizes Rwanda first, then East Africa.
- */
-export async function nominatimAutocomplete(opts: { input: string; limit?: number }): Promise<OsmSuggestion[]> {
-  const q = opts.input.trim();
-  if (q.length < 3) return [];
+// ─── Combined autocomplete with proper fallback ───────────────────────────────
+// Use this instead of calling googlePlacesAutocomplete directly in index.tsx
+// It tries Google first, falls back to Nominatim if Google returns nothing.
 
-  // Rwanda bounding box (approx): lon 28.86..30.90, lat -2.84..-1.05
-  const rwViewBox = '28.86,-1.05,30.90,-2.84';
-  const rw = await nominatimSearch({
-    q,
-    countrycodes: 'rw',
-    viewbox: rwViewBox,
-    bounded: true,
-    limit: opts.limit ?? 6,
-  });
-  if (rw.length) return rw;
+export async function autocomplete(
+  input: string,
+  limit = 6
+): Promise<PlaceSuggestion[]> {
+  const q = input.trim();
+  if (q.length < 2) return [];
 
-  // East Africa (looser): Rwanda, Uganda, Kenya, Tanzania, Burundi, South Sudan, Ethiopia
-  return await nominatimSearch({
-    q,
-    countrycodes: 'rw,ug,ke,tz,bi,ss,et',
-    limit: opts.limit ?? 6,
-  });
+  let out: PlaceSuggestion[] = [];
+
+  if (hasPlacesKey()) {
+    const rw = await googlePlacesAutocomplete({
+      input: q,
+      country: 'rw',
+      locationBias: { latitude: -1.9441, longitude: 30.0619 },
+      limit,
+    });
+    if (rw.length) {
+      out = rw.map((p) => ({
+        id: p.id,
+        shortLabel: p.shortLabel,
+        subLabel: p.subLabel,
+        fullAddress: p.fullText,
+        source: 'google' as const,
+      }));
+    }
+
+    if (out.length === 0) {
+      const ea = await googlePlacesAutocomplete({
+        input: q,
+        locationBias: { latitude: -1.9441, longitude: 30.0619 },
+        limit,
+      });
+      if (ea.length) {
+        out = ea.map((p) => ({
+          id: p.id,
+          shortLabel: p.shortLabel,
+          subLabel: p.subLabel,
+          fullAddress: p.fullText,
+          source: 'google' as const,
+        }));
+      }
+    }
+  }
+
+  if (out.length > 0) {
+    return out;
+  }
+
+  return nominatimAutocomplete({ input: q, limit });
 }
 
-export async function nominatimReverse(coords: LatLng): Promise<string | null> {
-  const params = new URLSearchParams();
-  params.set('format', 'jsonv2');
-  params.set('lat', String(coords.latitude));
-  params.set('lon', String(coords.longitude));
-  params.set('zoom', '18');
-  params.set('addressdetails', '1');
-  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
-    headers: nominatimHeaders(),
-  });
-  if (!res.ok) return null;
-  const json = (await res.json()) as any;
-  const name = json?.display_name;
-  if (!name || typeof name !== 'string') return null;
-  return name;
+// ─── Directions ───────────────────────────────────────────────────────────────
+
+export type LatLng = { latitude: number; longitude: number };
+
+export function decodePolyline(encoded: string): LatLng[] {
+  let index = 0;
+  const len = encoded.length;
+  let lat = 0, lng = 0;
+  const out: LatLng[] = [];
+
+  while (index < len) {
+    let b = 0, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+
+    shift = 0; result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+
+    out.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+  }
+  return out;
 }
 
+export async function fetchRoutePolyline(
+  origin: LatLng,
+  destination: LatLng
+): Promise<LatLng[]> {
+  const straightLine = (): LatLng[] => [origin, destination];
+  if (!GOOGLE_KEY) return straightLine();
+
+  try {
+    const params = new URLSearchParams({
+      origin: `${origin.latitude},${origin.longitude}`,
+      destination: `${destination.latitude},${destination.longitude}`,
+      key: GOOGLE_KEY,
+      region: 'rw',
+      mode: 'driving',
+    });
+
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/directions/json?${params.toString()}`
+    );
+    if (!res.ok) {
+      console.warn('[Places] Directions HTTP error:', res.status);
+      return straightLine();
+    }
+
+    const json = await res.json();
+    const status: string | undefined = json?.status;
+
+    // OK paths without polyline or empty routes — fall back silently (straight line).
+    if (status !== 'OK' || !Array.isArray(json.routes) || json.routes.length === 0) {
+      return straightLine();
+    }
+
+    const points = json.routes[0]?.overview_polyline?.points as string | undefined;
+    if (!points || typeof points !== 'string') {
+      return straightLine();
+    }
+
+    const decoded = decodePolyline(points);
+    return decoded.length ? decoded : straightLine();
+  } catch (e) {
+    console.warn('[Places] Directions error:', e);
+    return straightLine();
+  }
+}

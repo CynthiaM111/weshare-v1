@@ -1,67 +1,58 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function TabLayout() {
+export default function TabsLayout() {
+  const scheme = useColorScheme();
+  const c = Colors[scheme];
+
   return (
     <Tabs
+      initialRouteName="index"
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { borderTopWidth: 0 },
+        tabBarActiveTintColor: Colors.accent,
+        tabBarInactiveTintColor: c.subText,
+        tabBarStyle: {
+          backgroundColor: c.surface,
+          borderTopColor: c.hairline,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol name="house.fill" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="my-rides"
-        options={{
-          title: 'My Rides',
-          tabBarIcon: ({ color }) => <IconSymbol name="list.bullet" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol name="person.fill" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="search-home"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
-        }}
+        options={{ title: 'Find Ride', tabBarIcon: ({ color }) => <TabIcon name="magnifyingglass" color={color} /> }}
       />
       <Tabs.Screen
         name="post-ride"
-        options={{
-          href: null,
-        }}
+        options={{ title: 'Post Ride', tabBarIcon: ({ color }) => <TabIcon name="plus.circle" color={color} /> }}
       />
       <Tabs.Screen
-        name="find-ride"
-        options={{
-          href: null,
-        }}
+        name="my-rides"
+        options={{ title: 'My Rides', tabBarIcon: ({ color }) => <TabIcon name="list.bullet" color={color} /> }}
       />
       <Tabs.Screen
-        name="rides/[id]"
-        options={{
-          href: null,
-        }}
+        name="my-bookings"
+        options={{ title: 'Bookings', tabBarIcon: ({ color }) => <TabIcon name="ticket" color={color} /> }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{ title: 'Profile', tabBarIcon: ({ color }) => <TabIcon name="person" color={color} /> }}
+      />
+      {/* Hidden screens */}
+      <Tabs.Screen name="search-home" options={{ href: null }} />
+      <Tabs.Screen name="find-ride" options={{ href: null }} />
+      <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="rides/[id]" options={{ href: null }} />
+      <Tabs.Screen name="bookings/confirm" options={{ href: null }} />
+      <Tabs.Screen name="bookings/pending" options={{ href: null }} />
     </Tabs>
   );
+}
+
+function TabIcon({ name, color }: { name: any; color: string }) {
+  return <IconSymbol name={name} size={22} color={color} />;
 }

@@ -141,18 +141,27 @@ export async function updateRide(
 }
 
 /**
- * Search rides by short city names.
- * Matches from_short against `from` query and to_short against `to` query.
- * Uses Supabase ilike for case-insensitive partial matching.
+ * Search rides by city/place.
+ * A ride matches when:
+ *   (from_short ILIKE %from% OR from_address ILIKE %from%)
+ *   AND (to_short ILIKE %to% OR to_address ILIKE %to%)
+ * so "Kigali" finds rides stored as "City of Kigali" and vice versa.
  */
 export async function searchRides(fromQuery: string, toQuery: string): Promise<Ride[]> {
   const { data, error } = await supabase
     .from('rides')
     .select('*')
     .eq('status', 'active')
-    .ilike('from_short', `%${fromQuery.trim()}%`)
-    .ilike('to_short', `%${toQuery.trim()}%`)
+    .or(
+      `from_short.ilike.%${fromQuery.trim()}%,from_address.ilike.%${fromQuery.trim()}%`
+    )
+    .or(
+      `to_short.ilike.%${toQuery.trim()}%,to_address.ilike.%${toQuery.trim()}%`
+    )
     .order('depart_at', { ascending: true });
+
+  console.log('[Search] query from:', fromQuery, 'to:', toQuery);
+  console.log('[Search] results:', data?.length, 'error:', error?.message);
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(rowToRide);

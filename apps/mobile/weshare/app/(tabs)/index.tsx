@@ -12,6 +12,7 @@ import {
     Animated,
     Dimensions,
     Keyboard,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -118,6 +119,23 @@ export default function FindRideScreen() {
     const [searched, setSearched] = useState(false);
     const [results, setResults] = useState<Ride[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    // Lift sheet above keyboard so From/To suggestions stay tappable (iOS)
+    const [keyboardBottomInset, setKeyboardBottomInset] = useState(0);
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+        const onShow = (e: { endCoordinates: { height: number } }) => {
+            setKeyboardBottomInset(e.endCoordinates.height);
+        };
+        const onHide = () => setKeyboardBottomInset(0);
+        const subShow = Keyboard.addListener(showEvent, onShow);
+        const subHide = Keyboard.addListener(hideEvent, onHide);
+        return () => {
+            subShow.remove();
+            subHide.remove();
+        };
+    }, []);
 
     // ── Autocomplete debounce ─────────────────────────────────
     useEffect(() => {
@@ -269,7 +287,9 @@ export default function FindRideScreen() {
         if (!canSearch || searching) return;
         setSearching(true);
         Keyboard.dismiss();
+
         try {
+            console.log('[Search] searching:', fromText.trim(), '→', toText.trim());
             const rides = await searchRides(fromText.trim(), toText.trim());
             const filtered = session
                 ? rides.filter(r => r.postedByUserId !== session.userId)
@@ -368,8 +388,18 @@ export default function FindRideScreen() {
                 <IconSymbol name="location.fill" size={19} color={ACCENT} />
             </Pressable>
 
-            {/* ── Bottom sheet ── */}
-            <Animated.View style={[styles.sheet, { height: sheetAnim, backgroundColor: surf }]}>
+            {/* ── Bottom sheet (bottom inset = keyboard height so list stays above keys) ── */}
+            <Animated.View
+                style={[
+                    styles.sheet,
+                    {
+                        height: sheetAnim,
+                        backgroundColor: surf,
+                        bottom: keyboardBottomInset,
+                    },
+                ]}
+            >
+                <View style={styles.sheetInner}>
 
                 {/* Drag handle */}
                 <Pressable onPress={dismissAll} style={styles.handleArea}>
@@ -503,68 +533,76 @@ export default function FindRideScreen() {
                     </Pressable>
                 </View>
 
-                {/* ── Hint when field is focused but nothing typed ── */}
-                {editing !== null && fromSugs.length === 0 && toSugs.length === 0
-                    && !loadingFrom && !loadingTo
-                    && (editing === 'from' ? !fromText.trim() : !toText.trim()) && (
-                        <View style={styles.hintRow}>
-                            <IconSymbol name="magnifyingglass" size={13} color={textSub} />
-                            <ThemedText style={[styles.hintText, { color: textSub }]}>
-                                Start typing a city or place in Rwanda
-                            </ThemedText>
-                        </View>
-                    )}
-
-                {/* ── Loading indicator ── */}
-                {(loadingFrom || loadingTo) && (
-                    <View style={styles.loadingRow}>
-                        <ActivityIndicator size="small" color={loadingFrom ? TEAL : ACCENT} />
-                        <ThemedText style={[styles.loadingText, { color: textSub }]}>
-                            Finding places…
-                        </ThemedText>
-                    </View>
-                )}
-
-                {/* ── Suggestions list ── */}
-                {activeSugs.length > 0 && (
-                    <View style={[styles.sugList, { borderColor: hair }]}>
-                        {activeSugs.map((s, i, arr) => (
-                            <Pressable
-                                key={s.id}
-                                onPress={() => pickSuggestion(editing === 'from' ? 'from' : 'to', s)}
-                                style={[
-                                    styles.sugItem,
-                                    i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: hair },
-                                ]}
-                            >
-                                {/* Icon */}
-                                <View style={[styles.sugIcon, {
-                                    backgroundColor: editing === 'from' ? TEAL + '18' : ACCENT + '18',
-                                }]}>
-                                    <IconSymbol
-                                        name="mappin"
-                                        size={13}
-                                        color={editing === 'from' ? TEAL : ACCENT}
-                                    />
-                                </View>
-
-                                {/* Two-line label (Uber-style) */}
-                                <View style={styles.sugLabels}>
-                                    <ThemedText style={[styles.sugMain, { color: textPri }]} numberOfLines={1}>
-                                        {s.shortLabel}
+                {sheetMode !== 'results' ? (
+                    <ScrollView
+                        style={styles.suggestScroll}
+                        contentContainerStyle={styles.suggestScrollContent}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {/* ── Hint when field is focused but nothing typed ── */}
+                        {editing !== null && fromSugs.length === 0 && toSugs.length === 0
+                            && !loadingFrom && !loadingTo
+                            && (editing === 'from' ? !fromText.trim() : !toText.trim()) && (
+                                <View style={styles.hintRow}>
+                                    <IconSymbol name="magnifyingglass" size={13} color={textSub} />
+                                    <ThemedText style={[styles.hintText, { color: textSub }]}>
+                                        Start typing a city or place in Rwanda
                                     </ThemedText>
-                                    {s.subLabel ? (
-                                        <ThemedText style={[styles.sugSub, { color: textSub }]} numberOfLines={1}>
-                                            {s.subLabel}
-                                        </ThemedText>
-                                    ) : null}
                                 </View>
+                            )}
 
-                                <IconSymbol name="arrow.up.left" size={11} color={textSub} />
-                            </Pressable>
-                        ))}
-                    </View>
-                )}
+                        {/* ── Loading indicator ── */}
+                        {(loadingFrom || loadingTo) && (
+                            <View style={styles.loadingRow}>
+                                <ActivityIndicator size="small" color={loadingFrom ? TEAL : ACCENT} />
+                                <ThemedText style={[styles.loadingText, { color: textSub }]}>
+                                    Finding places…
+                                </ThemedText>
+                            </View>
+                        )}
+
+                        {/* ── Suggestions list ── */}
+                        {activeSugs.length > 0 && (
+                            <View style={[styles.sugList, { borderColor: hair }]}>
+                                {activeSugs.map((s, i, arr) => (
+                                    <Pressable
+                                        key={s.id}
+                                        onPress={() => pickSuggestion(editing === 'from' ? 'from' : 'to', s)}
+                                        style={[
+                                            styles.sugItem,
+                                            i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: hair },
+                                        ]}
+                                    >
+                                        <View style={[styles.sugIcon, {
+                                            backgroundColor: editing === 'from' ? TEAL + '18' : ACCENT + '18',
+                                        }]}>
+                                            <IconSymbol
+                                                name="mappin"
+                                                size={13}
+                                                color={editing === 'from' ? TEAL : ACCENT}
+                                            />
+                                        </View>
+
+                                        <View style={styles.sugLabels}>
+                                            <ThemedText style={[styles.sugMain, { color: textPri }]} numberOfLines={1}>
+                                                {s.shortLabel}
+                                            </ThemedText>
+                                            {s.subLabel ? (
+                                                <ThemedText style={[styles.sugSub, { color: textSub }]} numberOfLines={1}>
+                                                    {s.subLabel}
+                                                </ThemedText>
+                                            ) : null}
+                                        </View>
+
+                                        <IconSymbol name="arrow.up.left" size={11} color={textSub} />
+                                    </Pressable>
+                                ))}
+                            </View>
+                        )}
+                    </ScrollView>
+                ) : null}
 
                 {/* ── Results ── */}
                 {sheetMode === 'results' && searched && (
@@ -634,6 +672,7 @@ export default function FindRideScreen() {
                         ))}
                     </ScrollView>
                 )}
+                </View>
             </Animated.View>
         </View>
     );
@@ -763,6 +802,9 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -8 }, elevation: 36,
         overflow: 'hidden',
     },
+    sheetInner: { flex: 1 },
+    suggestScroll: { flex: 1 },
+    suggestScrollContent: { flexGrow: 1, paddingBottom: 4 },
     handleArea: { alignItems: 'center', paddingTop: 10, paddingBottom: 6 },
     handle: { width: 38, height: 4, borderRadius: 2 },
 

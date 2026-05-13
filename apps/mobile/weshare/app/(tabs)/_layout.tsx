@@ -47,6 +47,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="find-ride" options={{ href: null }} />
       <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen name="rides/[id]" options={{ href: null }} />
+      <Tabs.Screen name="edit-ride/[id]" options={{ href: null }} />
       <Tabs.Screen name="bookings/confirm" options={{ href: null }} />
       <Tabs.Screen name="bookings/pending" options={{ href: null }} />
     </Tabs>

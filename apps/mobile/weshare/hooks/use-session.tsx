@@ -1,13 +1,32 @@
 import type { Session } from '@supabase/supabase-js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { type AuthSession, toAuthSession } from '@/lib/auth/session';
 import { getProfile, type UserProfile } from '@/lib/auth/users';
 import { supabase } from '@/lib/supabase';
 
-export function useSession() {
+type SessionContextValue = {
+  session: AuthSession | null;
+  loading: boolean;
+  profile: UserProfile | null;
+  refreshProfile: () => Promise<void>;
+};
+
+const SessionContext = createContext<SessionContextValue | null>(null);
+
+export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // Keep loading=true until onAuthStateChange fires at least once with the
+  // restored (or null) session — supabase emits INITIAL_SESSION on startup.
   const [loading, setLoading] = useState(true);
   const syncTicketRef = useRef(0);
 
@@ -34,10 +53,6 @@ export function useSession() {
       setLoading(false);
     }
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (!cancelled) void syncAuth(s);
-    });
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -50,5 +65,17 @@ export function useSession() {
     };
   }, []);
 
-  return { session, loading, profile, refreshProfile };
+  return (
+    <SessionContext.Provider value={{ session, loading, profile, refreshProfile }}>
+      {children}
+    </SessionContext.Provider>
+  );
+}
+
+export function useSession(): SessionContextValue {
+  const ctx = useContext(SessionContext);
+  if (!ctx) {
+    throw new Error('useSession must be used within a SessionProvider');
+  }
+  return ctx;
 }

@@ -40,7 +40,7 @@ export default function ProfileScreen() {
 
   async function onLogout() {
     await clearSession();
-    router.replace('/auth' as any);
+    router.replace('/');
   }
 
   // Avoid inactive tab scenes painting login/profile UI on top of other tabs (RN Screens stacking glitches).

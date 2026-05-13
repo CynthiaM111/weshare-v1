@@ -3,13 +3,15 @@
  * Auth-gated. GPS-locked fields. 3-step flow.
  */
 
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -40,6 +42,13 @@ const DANGER = '#EF4444';
 type LatLng = { latitude: number; longitude: number };
 const STEPS = ['Route', 'Details', 'Review'] as const;
 type Step = typeof STEPS[number];
+
+function pad2(n: number) { return n < 10 ? `0${n}` : `${n}`; }
+function formatYMD(d: Date) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function formatHM(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function formatDateLong(d: Date) {
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function PostRideScreen() {
   const router = useRouter();
@@ -97,11 +106,43 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
   const [loadingTo, setLoadingTo] = useState(false);
 
   // Details
-  const [departDate, setDepartDate] = useState('');
-  const [departTime, setDepartTime] = useState('');
+  const [departAt, setDepartAt] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [seats, setSeats] = useState('');
   const [price, setPrice] = useState('');
   const [note, setNote] = useState('');
+
+  const departDate = departAt ? formatYMD(departAt) : '';
+  const departTime = departAt ? formatHM(departAt) : '';
+
+  function onDateChange(event: any, selected?: Date) {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (event?.type === 'dismissed') return;
+    }
+    if (!selected) return;
+    setDepartAt(prev => {
+      const base = prev ?? new Date();
+      const next = new Date(selected);
+      next.setHours(base.getHours(), base.getMinutes(), 0, 0);
+      return next;
+    });
+  }
+
+  function onTimeChange(event: any, selected?: Date) {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+      if (event?.type === 'dismissed') return;
+    }
+    if (!selected) return;
+    setDepartAt(prev => {
+      const base = prev ?? new Date();
+      const next = new Date(base);
+      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      return next;
+    });
+  }
 
   // Submit
   const [loading, setLoading] = useState(false);
@@ -178,9 +219,25 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
     setPosted(false); setStep('Route');
     setFromText(''); setToText(''); setFromConfirmed(false); setToConfirmed(false);
     setFromCoord(null); setToCoord(null); setFromFull(''); setToFull('');
-    setDepartDate(''); setDepartTime(''); setSeats(''); setPrice(''); setNote('');
+    setDepartAt(null); setSeats(''); setPrice(''); setNote('');
     setError('');
   }
+
+  // Keep latest `posted` accessible inside the focus-effect cleanup without
+  // re-subscribing on every render.
+  const postedRef = useRef(posted);
+  useEffect(() => { postedRef.current = posted; }, [posted]);
+
+  // When the user leaves the tab after a successful post, clear the success
+  // screen so coming back lands on the default form (not the stale success
+  // state). In-progress, unposted work is preserved.
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        if (postedRef.current) resetForm();
+      };
+    }, [])
+  );
 
   const activeSugs = editing === 'from' ? fromSugs : toSugs;
 
@@ -201,8 +258,9 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
             <ThemedText style={styles.successBtnText}>View my rides →</ThemedText>
           </LinearGradient>
         </Pressable>
-        <Pressable onPress={resetForm} style={[styles.successAlt, { borderColor: hair }]}>
-          <ThemedText style={[styles.successAltText, { color: textSub }]}>Post another ride</ThemedText>
+        <Pressable onPress={resetForm} style={[styles.successAlt, { backgroundColor: ACCENT + '12', borderColor: ACCENT + '35' }]}>
+          <IconSymbol name="plus" size={14} color={ACCENT} />
+          <ThemedText style={[styles.successAltText, { color: ACCENT }]}>Post another ride</ThemedText>
         </Pressable>
       </View>
     );
@@ -212,12 +270,9 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
     <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? NAVY : '#F5F7FA' }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair }]}>
-          <View>
-            <ThemedText style={[styles.headerTitle, { color: textPri }]}>Post a Ride</ThemedText>
-            <ThemedText style={[styles.headerSub, { color: textSub }]}>Share your route with passengers</ThemedText>
-          </View>
+        {/* Header (title centered above the step tracker) */}
+        <View style={[styles.headerWrap, { backgroundColor: cardBg, paddingTop: insets.top + 12 }]}>
+          <ThemedText style={[styles.headerTitle, { color: textPri }]}>Post a Ride</ThemedText>
         </View>
 
         {/* Step bar */}
@@ -264,60 +319,61 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
                 Choose from suggestions — passengers search by city name.
               </ThemedText>
 
-              {/* From */}
-              <View style={styles.fieldGroup}>
-                <ThemedText style={[styles.fieldLabel, { color: textSub }]}>FROM</ThemedText>
-                <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair },
-                editing === 'from' && { borderColor: TEAL, borderWidth: 1.5 },
-                fromConfirmed && { borderColor: TEAL + '60', borderWidth: 1 },
-                ]}>
-                  <View style={[styles.fieldDot, { backgroundColor: fromConfirmed ? TEAL : hair }]} />
+              {/* From / To card */}
+              <View style={[styles.routeCard, { backgroundColor: cardBg, borderColor: hair }]}>
+                {/* From row */}
+                <View style={styles.routeRow}>
+                  <View style={[styles.routeDot, { backgroundColor: TEAL }]} />
                   <TextInput
                     value={fromText}
                     onChangeText={v => { setFromText(v); if (fromConfirmed) { setFromConfirmed(false); setFromCoord(null); setFromFull(''); } }}
                     onFocus={() => setEditing('from')}
                     placeholder="Origin city or place"
                     placeholderTextColor={textSub}
-                    style={[styles.fieldInput, { color: textPri }]}
+                    style={[styles.routeInput, { color: textPri }]}
                   />
                   {loadingFrom && <ActivityIndicator size="small" color={TEAL} />}
-                  {fromConfirmed && <View style={[styles.confirmedBadge, { backgroundColor: TEAL + '20' }]}><IconSymbol name="checkmark" size={10} color={TEAL} /></View>}
-                  {fromText.length > 0 && <Pressable onPress={() => resetField('from')}><IconSymbol name="xmark.circle.fill" size={17} color={textSub} /></Pressable>}
+                  {fromConfirmed
+                    ? <View style={[styles.confirmedBadge, { backgroundColor: TEAL + '20' }]}><IconSymbol name="checkmark" size={10} color={TEAL} /></View>
+                    : fromText.length > 0
+                      ? <Pressable onPress={() => resetField('from')}><IconSymbol name="xmark.circle.fill" size={17} color={textSub} /></Pressable>
+                      : null
+                  }
                 </View>
-              </View>
 
-              {/* Swap */}
-              <Pressable
-                onPress={() => {
-                  const tf = fromText; const tc = fromCoord; const tfa = fromFull; const tfc = fromConfirmed;
-                  setFromText(toText); setFromCoord(toCoord); setFromFull(toFull); setFromConfirmed(toConfirmed);
-                  setToText(tf); setToCoord(tc); setToFull(tfa); setToConfirmed(tfc);
-                }}
-                style={[styles.swapBtn, { backgroundColor: inputBg, borderColor: hair }]}
-              >
-                <IconSymbol name="arrow.up.arrow.down" size={14} color={textSub} />
-                <ThemedText style={[styles.swapText, { color: textSub }]}>Swap</ThemedText>
-              </Pressable>
+                {/* Divider with centered swap button */}
+                <View style={styles.routeDividerWrap}>
+                  <View style={[styles.routeDivider, { backgroundColor: hair }]} />
+                  <Pressable
+                    onPress={() => {
+                      const tf = fromText; const tc = fromCoord; const tfa = fromFull; const tfc = fromConfirmed;
+                      setFromText(toText); setFromCoord(toCoord); setFromFull(toFull); setFromConfirmed(toConfirmed);
+                      setToText(tf); setToCoord(tc); setToFull(tfa); setToConfirmed(tfc);
+                    }}
+                    style={[styles.routeSwap, { backgroundColor: inputBg, borderColor: hair }]}
+                  >
+                    <IconSymbol name="arrow.up.arrow.down" size={14} color={textSub} />
+                  </Pressable>
+                </View>
 
-              {/* To */}
-              <View style={styles.fieldGroup}>
-                <ThemedText style={[styles.fieldLabel, { color: textSub }]}>TO</ThemedText>
-                <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair },
-                editing === 'to' && { borderColor: ACCENT, borderWidth: 1.5 },
-                toConfirmed && { borderColor: ACCENT + '60', borderWidth: 1 },
-                ]}>
-                  <View style={[styles.fieldDot, { backgroundColor: toConfirmed ? ACCENT : hair }]} />
+                {/* To row */}
+                <View style={styles.routeRow}>
+                  <View style={[styles.routeDot, { backgroundColor: ACCENT }]} />
                   <TextInput
                     value={toText}
                     onChangeText={v => { setToText(v); if (toConfirmed) { setToConfirmed(false); setToCoord(null); setToFull(''); } }}
                     onFocus={() => setEditing('to')}
                     placeholder="Destination city or place"
                     placeholderTextColor={textSub}
-                    style={[styles.fieldInput, { color: textPri }]}
+                    style={[styles.routeInput, { color: textPri }]}
                   />
                   {loadingTo && <ActivityIndicator size="small" color={ACCENT} />}
-                  {toConfirmed && <View style={[styles.confirmedBadge, { backgroundColor: ACCENT + '20' }]}><IconSymbol name="checkmark" size={10} color={ACCENT} /></View>}
-                  {toText.length > 0 && <Pressable onPress={() => resetField('to')}><IconSymbol name="xmark.circle.fill" size={17} color={textSub} /></Pressable>}
+                  {toConfirmed
+                    ? <View style={[styles.confirmedBadge, { backgroundColor: ACCENT + '20' }]}><IconSymbol name="checkmark" size={10} color={ACCENT} /></View>
+                    : toText.length > 0
+                      ? <Pressable onPress={() => resetField('to')}><IconSymbol name="xmark.circle.fill" size={17} color={textSub} /></Pressable>
+                      : null
+                  }
                 </View>
               </View>
 
@@ -361,17 +417,21 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               <View style={styles.rowFields}>
                 <View style={[styles.fieldGroup, { flex: 1 }]}>
                   <ThemedText style={[styles.fieldLabel, { color: textSub }]}>DATE</ThemedText>
-                  <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair }]}>
+                  <Pressable onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }} style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair }]}>
                     <IconSymbol name="calendar" size={15} color={textSub} />
-                    <TextInput value={departDate} onChangeText={v => setDepartDate(v.replace(/[^0-9-]/g, '').slice(0, 10))} placeholder="2025-12-01" placeholderTextColor={textSub} style={[styles.fieldInput, { color: textPri }]} keyboardType="numbers-and-punctuation" maxLength={10} />
-                  </View>
+                    <ThemedText style={[styles.fieldInput, { color: departAt ? textPri : textSub }]}>
+                      {departAt ? formatDateLong(departAt) : 'Select date'}
+                    </ThemedText>
+                  </Pressable>
                 </View>
                 <View style={[styles.fieldGroup, { flex: 1 }]}>
                   <ThemedText style={[styles.fieldLabel, { color: textSub }]}>TIME</ThemedText>
-                  <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair }]}>
+                  <Pressable onPress={() => { Keyboard.dismiss(); setShowTimePicker(true); }} style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair }]}>
                     <IconSymbol name="clock" size={15} color={textSub} />
-                    <TextInput value={departTime} onChangeText={v => setDepartTime(v.replace(/[^0-9:]/g, '').slice(0, 5))} placeholder="08:00" placeholderTextColor={textSub} style={[styles.fieldInput, { color: textPri }]} keyboardType="numbers-and-punctuation" maxLength={5} />
-                  </View>
+                    <ThemedText style={[styles.fieldInput, { color: departAt ? textPri : textSub }]}>
+                      {departAt ? formatHM(departAt) : 'Select time'}
+                    </ThemedText>
+                  </Pressable>
                 </View>
               </View>
 
@@ -400,9 +460,9 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               </View>
 
               <View style={styles.navRow}>
-                <Pressable onPress={() => setStep('Route')} style={[styles.backBtn, { borderColor: hair, backgroundColor: inputBg }]}>
-                  <IconSymbol name="arrow.left" size={14} color={textSub} />
-                  <ThemedText style={[styles.backBtnText, { color: textSub }]}>Back</ThemedText>
+                <Pressable onPress={() => setStep('Route')} style={[styles.backBtn, { backgroundColor: inputBg, borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(8,17,31,0.5)' }]}>
+                  <IconSymbol name="arrow.left" size={14} color={textPri} />
+                  <ThemedText style={[styles.backBtnText, { color: textPri }]}>Back</ThemedText>
                 </Pressable>
                 <Pressable onPress={() => setStep('Review')} disabled={!detailsValid} style={[styles.nextBtn, { flex: 1, opacity: detailsValid ? 1 : 0.38 }]}>
                   <LinearGradient colors={[ACCENT, '#FF4500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtnGrad}>
@@ -453,9 +513,9 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               ) : null}
 
               <View style={styles.navRow}>
-                <Pressable onPress={() => setStep('Details')} style={[styles.backBtn, { borderColor: hair, backgroundColor: inputBg }]}>
-                  <IconSymbol name="arrow.left" size={14} color={textSub} />
-                  <ThemedText style={[styles.backBtnText, { color: textSub }]}>Back</ThemedText>
+                <Pressable onPress={() => setStep('Details')} style={[styles.backBtn, { backgroundColor: inputBg, borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(8,17,31,0.5)' }]}>
+                  <IconSymbol name="arrow.left" size={14} color={textPri} />
+                  <ThemedText style={[styles.backBtnText, { color: textPri }]}>Back</ThemedText>
                 </Pressable>
                 <Pressable onPress={onPost} disabled={loading} style={[styles.nextBtn, { flex: 1, opacity: loading ? 0.6 : 1 }]}>
                   <LinearGradient colors={[TEAL, '#00a896']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtnGrad}>
@@ -469,6 +529,52 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
             </View>
           )}
         </ScrollView>
+
+        {/* Date / time pickers */}
+        {Platform.OS === 'android' && showDatePicker && (
+          <DateTimePicker
+            value={departAt ?? new Date()}
+            mode="date"
+            display="default"
+            onChange={onDateChange}
+          />
+        )}
+        {Platform.OS === 'android' && showTimePicker && (
+          <DateTimePicker
+            value={departAt ?? new Date()}
+            mode="time"
+            display="default"
+            is24Hour
+            onChange={onTimeChange}
+          />
+        )}
+        {Platform.OS === 'ios' && (showDatePicker || showTimePicker) && (
+          <Modal
+            transparent
+            animationType="fade"
+            visible
+            onRequestClose={() => { setShowDatePicker(false); setShowTimePicker(false); }}
+          >
+            <Pressable
+              style={styles.pickerBackdrop}
+              onPress={() => { setShowDatePicker(false); setShowTimePicker(false); }}
+            />
+            <View style={[styles.pickerSheet, { backgroundColor: cardBg, borderTopColor: hair }]}>
+              <View style={[styles.pickerHeader, { borderBottomColor: hair }]}>
+                <Pressable onPress={() => { setShowDatePicker(false); setShowTimePicker(false); }}>
+                  <ThemedText style={[styles.pickerDone, { color: ACCENT }]}>Done</ThemedText>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={departAt ?? new Date()}
+                mode={showDatePicker ? 'date' : 'time'}
+                display="spinner"
+                onChange={showDatePicker ? onDateChange : onTimeChange}
+                textColor={textPri}
+              />
+            </View>
+          </Modal>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -476,10 +582,9 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '900' },
-  headerSub: { fontSize: 13, fontWeight: '600', marginTop: 2 },
-  stepBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
+  headerWrap: { paddingHorizontal: 20, paddingBottom: 16, alignItems: 'center' },
+  headerTitle: { fontSize: 28, fontWeight: '900', letterSpacing: -0.3, lineHeight: 34 },
+  stepBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
   stepItem: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   stepDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
   stepNum: { fontSize: 11, fontWeight: '900' },
@@ -495,8 +600,13 @@ const styles = StyleSheet.create({
   fieldDot: { width: 8, height: 8, borderRadius: 4 },
   fieldInput: { flex: 1, fontSize: 14, fontWeight: '700', padding: 0 },
   confirmedBadge: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  swapBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 },
-  swapText: { fontSize: 12, fontWeight: '700' },
+  routeCard: { borderRadius: 20, borderWidth: 1, padding: 16 },
+  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 42 },
+  routeDot: { width: 10, height: 10, borderRadius: 5 },
+  routeInput: { flex: 1, fontSize: 15, fontWeight: '700', padding: 0 },
+  routeDividerWrap: { height: 32, justifyContent: 'center', marginVertical: 2 },
+  routeDivider: { height: 1, width: '100%' },
+  routeSwap: { position: 'absolute', top: 0, left: '50%', marginLeft: -16, width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   sugList: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   sugItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
   sugIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
@@ -510,6 +620,10 @@ const styles = StyleSheet.create({
   navRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 50, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1 },
   backBtnText: { fontSize: 14, fontWeight: '700' },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  pickerSheet: { borderTopWidth: 1, paddingBottom: 24 },
+  pickerHeader: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  pickerDone: { fontSize: 16, fontWeight: '800' },
   nextBtn: { borderRadius: 14, overflow: 'hidden' },
   nextBtnGrad: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 20 },
   nextBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
@@ -530,6 +644,6 @@ const styles = StyleSheet.create({
   successBtn: { borderRadius: 16, overflow: 'hidden', width: '100%', marginTop: 8 },
   successBtnGrad: { height: 54, alignItems: 'center', justifyContent: 'center' },
   successBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  successAlt: { height: 46, width: '100%', borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  successAltText: { fontSize: 14, fontWeight: '700' },
+  successAlt: { height: 48, width: '100%', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
+  successAltText: { fontSize: 15, fontWeight: '900' },
 }) as any;

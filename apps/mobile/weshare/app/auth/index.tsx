@@ -82,8 +82,6 @@ export default function AuthScreen() {
                 placeholder="78 000 0000"
                 placeholderTextColor={c.subText}
                 style={[styles.input, { color: c.text }]}
-                returnKeyType="send"
-                onSubmitEditing={onSend}
                 maxLength={15}
               />
             </View>

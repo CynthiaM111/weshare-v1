@@ -68,6 +68,25 @@ export async function listBookingsForRide(rideId: string): Promise<Booking[]> {
   return (data ?? []).map(rowToBooking);
 }
 
+/**
+ * Returns a map of rideId → number of non-cancelled bookings. Used to gate
+ * driver-side actions like editing a ride.
+ */
+export async function countActiveBookingsForRides(rideIds: string[]): Promise<Record<string, number>> {
+  if (rideIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('ride_id')
+    .in('ride_id', rideIds)
+    .neq('status', 'cancelled');
+  if (error) throw new Error(error.message);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { ride_id: string }[]) {
+    counts[row.ride_id] = (counts[row.ride_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function updateBookingStatus(
   bookingId: string,
   status: Booking['status']

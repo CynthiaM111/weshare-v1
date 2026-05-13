@@ -3,8 +3,8 @@
  * Auth-gated. Shows rides posted by the logged-in user.
  */
 
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator, Pressable, RefreshControl,
   ScrollView, StyleSheet, View,
@@ -17,6 +17,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AuthGate } from '@/components/ui/AuthGate';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
+import { countActiveBookingsForRides } from '@/lib/bookings';
 import { listMyRides, updateRideStatus, type Ride } from '@/lib/rides';
 
 const NAVY = '#08111F';
@@ -74,15 +75,26 @@ export default function MyRidesScreen() {
 
 function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPri, textSub, inputBg }: any) {
   const [rides, setRides] = useState<Ride[]>([]);
+  const [bookingCounts, setBookingCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  async function load() {
-    const data = await listMyRides(session.userId);
-    setRides(data);
-  }
+  const load = useCallback(async () => {
+    try {
+      const data = await listMyRides(session.userId);
+      setRides(data);
+      const counts = await countActiveBookingsForRides(data.map(r => r.id));
+      setBookingCounts(counts);
+    } finally {
+      setLoading(false);
+    }
+  }, [session.userId]);
 
-  useEffect(() => { load().finally(() => setLoading(false)); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   async function onRefresh() { setRefreshing(true); await load(); setRefreshing(false); }
 
@@ -133,12 +145,14 @@ function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPr
                 <View style={styles.cardTop}>
                   <View style={{ flex: 1 }}>
                     <View style={styles.chipRow}>
-                      <View style={[styles.chip, { backgroundColor: TEAL + '18' }]}>
-                        <ThemedText style={[styles.chipText, { color: TEAL }]}>{r.fromShort}</ThemedText>
+                      <View style={[styles.chip, { backgroundColor: inputBg }]}>
+                        <View style={[styles.routeDot, { backgroundColor: TEAL }]} />
+                        <ThemedText style={[styles.chipText, { color: textPri }]}>{r.fromShort}</ThemedText>
                       </View>
                       <ThemedText style={[styles.arrow, { color: textSub }]}>→</ThemedText>
-                      <View style={[styles.chip, { backgroundColor: ACCENT + '18' }]}>
-                        <ThemedText style={[styles.chipText, { color: ACCENT }]}>{r.toShort}</ThemedText>
+                      <View style={[styles.chip, { backgroundColor: inputBg }]}>
+                        <View style={[styles.routeDot, { backgroundColor: ACCENT }]} />
+                        <ThemedText style={[styles.chipText, { color: textPri }]}>{r.toShort}</ThemedText>
                       </View>
                     </View>
                     <View style={styles.metaRow}>
@@ -148,8 +162,9 @@ function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPr
                       </ThemedText>
                     </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: STATUS_COLOR[r.status] + '20' }]}>
-                    <ThemedText style={[styles.statusText, { color: STATUS_COLOR[r.status] }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: inputBg }]}>
+                    <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[r.status] }]} />
+                    <ThemedText style={[styles.statusText, { color: textSub }]}>
                       {r.status}
                     </ThemedText>
                   </View>
@@ -162,7 +177,7 @@ function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPr
                     <ThemedText style={[styles.metaText, { color: textSub }]}>{r.seats} seats</ThemedText>
                   </View>
                   <View style={[styles.detailChip, { backgroundColor: inputBg }]}>
-                    <ThemedText style={[styles.metaText, { color: ACCENT, fontWeight: '900' }]}>
+                    <ThemedText style={[styles.metaText, { color: textPri, fontWeight: '800' }]}>
                       RWF {r.priceRwf.toLocaleString()} / seat
                     </ThemedText>
                   </View>
@@ -175,14 +190,23 @@ function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPr
                     style={[styles.actionBtn, { backgroundColor: inputBg }]}
                   >
                     <IconSymbol name="person.2.fill" size={13} color={textSub} />
-                    <ThemedText style={[styles.actionText, { color: textPri }]}>View bookings</ThemedText>
+                    <ThemedText style={[styles.actionText, { color: textPri }]} numberOfLines={1}>Bookings</ThemedText>
                   </Pressable>
+                  {r.status === 'active' && (bookingCounts[r.id] ?? 0) === 0 && (
+                    <Pressable
+                      onPress={() => router.push(`/edit-ride/${r.id}` as any)}
+                      style={[styles.actionBtn, { backgroundColor: inputBg }]}
+                    >
+                      <IconSymbol name="pencil" size={13} color={textSub} />
+                      <ThemedText style={[styles.actionText, { color: textPri }]} numberOfLines={1}>Edit</ThemedText>
+                    </Pressable>
+                  )}
                   {r.status === 'active' && (
                     <Pressable
                       onPress={() => onCancel(r.id)}
                       style={[styles.actionBtn, { backgroundColor: '#EF444414', borderColor: '#EF444430', borderWidth: 1 }]}
                     >
-                      <ThemedText style={[styles.actionText, { color: '#EF4444' }]}>Cancel</ThemedText>
+                      <ThemedText style={[styles.actionText, { color: '#EF4444' }]} numberOfLines={1}>Cancel</ThemedText>
                     </Pressable>
                   )}
                 </View>
@@ -216,16 +240,18 @@ const styles = StyleSheet.create({
   rideCard: { borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   chipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  chip: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  routeDot: { width: 6, height: 6, borderRadius: 3 },
   chipText: { fontSize: 13, fontWeight: '900' },
   arrow: { fontSize: 11 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
   metaText: { fontSize: 12, fontWeight: '600' },
-  statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   detailRow: { flexDirection: 'row', gap: 8 },
   detailChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  actionsRow: { flexDirection: 'row', gap: 8, paddingTop: 10, borderTopWidth: 1 },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, borderRadius: 10 },
-  actionText: { fontSize: 13, fontWeight: '700' },
+  actionsRow: { flexDirection: 'row', gap: 6, paddingTop: 10, borderTopWidth: 1 },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 36, borderRadius: 10, paddingHorizontal: 8 },
+  actionText: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
 }) as any;

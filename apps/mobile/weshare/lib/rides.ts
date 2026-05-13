@@ -120,6 +120,27 @@ export async function updateRideStatus(
 }
 
 /**
+ * Partial update of an editable ride. Only the fields a driver is allowed to
+ * tweak after posting are supported; route changes require a new ride.
+ */
+export async function updateRide(
+  rideId: string,
+  fields: Partial<Pick<Ride, 'departAtISO' | 'seats' | 'priceRwf' | 'note'>>
+): Promise<string | null> {
+  const updates: Record<string, unknown> = {};
+  if (fields.departAtISO !== undefined) updates.depart_at = fields.departAtISO;
+  if (fields.seats !== undefined) updates.seats = fields.seats;
+  if (fields.priceRwf !== undefined) updates.price_rwf = fields.priceRwf;
+  if (fields.note !== undefined) updates.note = fields.note ?? null;
+
+  const { error } = await supabase
+    .from('rides')
+    .update(updates)
+    .eq('id', rideId);
+  return error ? error.message : null;
+}
+
+/**
  * Search rides by short city names.
  * Matches from_short against `from` query and to_short against `to` query.
  * Uses Supabase ilike for case-insensitive partial matching.

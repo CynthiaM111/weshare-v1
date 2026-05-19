@@ -1,3 +1,5 @@
+import { getProfiles, profileFromRow, type UserProfile } from './auth/users';
+import { getRide, type Ride } from './rides';
 import { supabase } from './supabase';
 
 export type Booking = {
@@ -20,11 +22,42 @@ function rowToBooking(row: any): Booking {
   };
 }
 
+export async function getConfirmedSeatsForRide(rideId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('seats')
+    .eq('ride_id', rideId)
+    .eq('status', 'confirmed');
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).reduce((sum, row) => sum + row.seats, 0);
+}
+
 export async function createBooking(
   rideId: string,
   passengerId: string,
   seats: number
 ): Promise<Booking> {
+  const ride = await getRide(rideId);
+  if (!ride) throw new Error('Ride not found');
+
+  const confirmedSeats = await getConfirmedSeatsForRide(rideId);
+  if (confirmedSeats >= ride.seats) {
+    throw new Error('No seats available');
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('ride_id', rideId)
+    .eq('passenger_id', passengerId)
+    .neq('status', 'cancelled');
+
+  if (existingError) throw new Error(existingError.message);
+  if ((existing ?? []).length > 0) {
+    throw new Error('You already have a booking for this ride');
+  }
+
   const { data, error } = await supabase
     .from('bookings')
     .insert({ ride_id: rideId, passenger_id: passengerId, seats, status: 'pending' })
@@ -57,6 +90,19 @@ export async function listMyBookings(passengerId: string): Promise<Booking[]> {
   return (data ?? []).map(rowToBooking);
 }
 
+export type BookingWithRide = Booking & { ride: Ride | null };
+
+export async function listMyBookingsWithRides(passengerId: string): Promise<BookingWithRide[]> {
+  const bookings = await listMyBookings(passengerId);
+  if (bookings.length === 0) return [];
+
+  const rideIds = [...new Set(bookings.map(b => b.rideId))];
+  const rides = await Promise.all(rideIds.map(id => getRide(id)));
+  const rideById = Object.fromEntries(rideIds.map((id, i) => [id, rides[i]])) as Record<string, Ride | null>;
+
+  return bookings.map(b => ({ ...b, ride: rideById[b.rideId] ?? null }));
+}
+
 export async function listBookingsForRide(rideId: string): Promise<Booking[]> {
   const { data, error } = await supabase
     .from('bookings')
@@ -66,6 +112,59 @@ export async function listBookingsForRide(rideId: string): Promise<Booking[]> {
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(rowToBooking);
+}
+
+export type BookingWithPassenger = Booking & { passengerProfile: UserProfile | null };
+
+function profileFromJoinRow(raw: unknown): UserProfile | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  if (!row.id || typeof row.created_at !== 'string') return null;
+  return profileFromRow({
+    id: String(row.id),
+    phone: (row.phone as string | null) ?? null,
+    full_name: (row.full_name as string | null) ?? null,
+    avatar_url: (row.avatar_url as string | null) ?? null,
+    created_at: row.created_at,
+  });
+}
+
+/** Bookings for a ride with passenger profiles (join + batch fallback). */
+export async function listBookingsForRideWithPassengers(
+  rideId: string
+): Promise<BookingWithPassenger[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(
+      `
+      *,
+      profiles (
+        id,
+        full_name,
+        phone,
+        avatar_url,
+        created_at
+      )
+    `
+    )
+    .eq('ride_id', rideId)
+    .order('created_at', { ascending: true });
+
+  if (!error && data) {
+    return data.map((row: Record<string, unknown>) => {
+      const embedded = row.profiles;
+      const profile =
+        Array.isArray(embedded) ? profileFromJoinRow(embedded[0]) : profileFromJoinRow(embedded);
+      return { ...rowToBooking(row), passengerProfile: profile };
+    });
+  }
+
+  const bookings = await listBookingsForRide(rideId);
+  const profiles = await getProfiles(bookings.map(b => b.passengerId));
+  return bookings.map(b => ({
+    ...b,
+    passengerProfile: profiles.get(b.passengerId) ?? null,
+  }));
 }
 
 /**
@@ -100,4 +199,35 @@ export async function updateBookingStatus(
 
 export async function cancelBooking(bookingId: string): Promise<string | null> {
   return updateBookingStatus(bookingId, 'cancelled');
+}
+
+export type DriverBookingCounts = { pending: number; confirmed: number };
+
+/** Pending / confirmed bookings across all rides posted by this driver. */
+export async function getDriverBookingCounts(driverId: string): Promise<DriverBookingCounts> {
+  const { data: rides, error: ridesError } = await supabase
+    .from('rides')
+    .select('id')
+    .eq('posted_by', driverId);
+
+  if (ridesError) throw new Error(ridesError.message);
+
+  const rideIds = (rides ?? []).map((r: { id: string }) => r.id);
+  if (rideIds.length === 0) return { pending: 0, confirmed: 0 };
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('status')
+    .in('ride_id', rideIds)
+    .in('status', ['pending', 'confirmed']);
+
+  if (error) throw new Error(error.message);
+
+  let pending = 0;
+  let confirmed = 0;
+  for (const row of data ?? []) {
+    if (row.status === 'pending') pending += 1;
+    else if (row.status === 'confirmed') confirmed += 1;
+  }
+  return { pending, confirmed };
 }

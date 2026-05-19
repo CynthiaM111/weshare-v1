@@ -40,12 +40,46 @@ function rowToRide(row: any): Ride {
   };
 }
 
+/** Ride IDs where sum(confirmed booking seats) >= ride.seats (fully booked). */
+async function getFullyBookedRideIds(): Promise<string[]> {
+  const { data: bookings, error: bookingsError } = await supabase
+    .from('bookings')
+    .select('ride_id, seats')
+    .eq('status', 'confirmed');
+
+  if (bookingsError) throw new Error(bookingsError.message);
+  if (!bookings?.length) return [];
+
+  const confirmedByRide: Record<string, number> = {};
+  for (const row of bookings as { ride_id: string; seats: number }[]) {
+    confirmedByRide[row.ride_id] = (confirmedByRide[row.ride_id] ?? 0) + row.seats;
+  }
+
+  const rideIds = Object.keys(confirmedByRide);
+  const { data: rides, error: ridesError } = await supabase
+    .from('rides')
+    .select('id, seats')
+    .in('id', rideIds);
+
+  if (ridesError) throw new Error(ridesError.message);
+
+  return (rides ?? [])
+    .filter((r: { id: string; seats: number }) => (confirmedByRide[r.id] ?? 0) >= r.seats)
+    .map((r: { id: string }) => r.id);
+}
+
 export async function listRides(): Promise<Ride[]> {
-  const { data, error } = await supabase
+  const fullRideIds = await getFullyBookedRideIds();
+  const now = new Date().toISOString();
+  let query = supabase
     .from('rides')
     .select('*')
     .eq('status', 'active')
-    .order('depart_at', { ascending: true });
+    .gte('depart_at', now);
+  if (fullRideIds.length > 0) {
+    query = query.not('id', 'in', `(${fullRideIds.join(',')})`);
+  }
+  const { data, error } = await query.order('depart_at', { ascending: true });
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(rowToRide);
@@ -119,6 +153,18 @@ export async function updateRideStatus(
   return error ? error.message : null;
 }
 
+export async function cancelRide(rideId: string): Promise<string | null> {
+  const { listBookingsForRide, updateBookingStatus } = await import('./bookings');
+  const bookings = await listBookingsForRide(rideId);
+  for (const booking of bookings) {
+    if (booking.status === 'pending' || booking.status === 'confirmed') {
+      const err = await updateBookingStatus(booking.id, 'cancelled');
+      if (err) return err;
+    }
+  }
+  return updateRideStatus(rideId, 'cancelled');
+}
+
 /**
  * Partial update of an editable ride. Only the fields a driver is allowed to
  * tweak after posting are supported; route changes require a new ride.
@@ -148,17 +194,19 @@ export async function updateRide(
  * so "Kigali" finds rides stored as "City of Kigali" and vice versa.
  */
 export async function searchRides(fromQuery: string, toQuery: string): Promise<Ride[]> {
-  const { data, error } = await supabase
+  const fullRideIds = await getFullyBookedRideIds();
+  const now = new Date().toISOString();
+  let query = supabase
     .from('rides')
     .select('*')
     .eq('status', 'active')
-    .or(
-      `from_short.ilike.%${fromQuery.trim()}%,from_address.ilike.%${fromQuery.trim()}%`
-    )
-    .or(
-      `to_short.ilike.%${toQuery.trim()}%,to_address.ilike.%${toQuery.trim()}%`
-    )
-    .order('depart_at', { ascending: true });
+    .gte('depart_at', now)
+    .or(`from_short.ilike.%${fromQuery.trim()}%,from_address.ilike.%${fromQuery.trim()}%`)
+    .or(`to_short.ilike.%${toQuery.trim()}%,to_address.ilike.%${toQuery.trim()}%`);
+  if (fullRideIds.length > 0) {
+    query = query.not('id', 'in', `(${fullRideIds.join(',')})`);
+  }
+  const { data, error } = await query.order('depart_at', { ascending: true });
 
   console.log('[Search] query from:', fromQuery, 'to:', toQuery);
   console.log('[Search] results:', data?.length, 'error:', error?.message);

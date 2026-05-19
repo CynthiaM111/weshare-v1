@@ -18,7 +18,7 @@ import { AuthGate } from '@/components/ui/AuthGate';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
 import { countActiveBookingsForRides } from '@/lib/bookings';
-import { listMyRides, updateRideStatus, type Ride } from '@/lib/rides';
+import { cancelRide, listMyRides, type Ride } from '@/lib/rides';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -76,6 +76,7 @@ export default function MyRidesScreen() {
 function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPri, textSub, inputBg }: any) {
   const [rides, setRides] = useState<Ride[]>([]);
   const [bookingCounts, setBookingCounts] = useState<Record<string, number>>({});
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -98,9 +99,12 @@ function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPr
 
   async function onRefresh() { setRefreshing(true); await load(); setRefreshing(false); }
 
-  async function onCancel(rideId: string) {
-    await updateRideStatus(rideId, 'cancelled');
-    setRides(prev => prev.map(r => r.id === rideId ? { ...r, status: 'cancelled' } : r));
+  async function onCancelRide(rideId: string) {
+    const err = await cancelRide(rideId);
+    if (!err) {
+      setRides(prev => prev.map(r => r.id === rideId ? { ...r, status: 'cancelled' } : r));
+    }
+    setCancelConfirmId(null);
   }
 
   return (
@@ -202,12 +206,38 @@ function MyRidesList({ session, router, insets, isDark, bg, cardBg, hair, textPr
                     </Pressable>
                   )}
                   {r.status === 'active' && (
-                    <Pressable
-                      onPress={() => onCancel(r.id)}
-                      style={[styles.actionBtn, { backgroundColor: '#EF444414', borderColor: '#EF444430', borderWidth: 1 }]}
-                    >
-                      <ThemedText style={[styles.actionText, { color: '#EF4444' }]} numberOfLines={1}>Cancel</ThemedText>
-                    </Pressable>
+                    cancelConfirmId === r.id ? (
+                      <View style={[styles.actionBtn, { flex: 2, height: 'auto', paddingVertical: 8, gap: 8, backgroundColor: '#EF444414', borderColor: '#EF444430', borderWidth: 1 }]}>
+                        <ThemedText style={[styles.actionText, { color: '#EF4444' }]} numberOfLines={2}>
+                          This will cancel all passenger bookings
+                        </ThemedText>
+                        <View style={{ flexDirection: 'row', gap: 6, width: '100%' }}>
+                          <Pressable
+                            onPress={() => onCancelRide(r.id)}
+                            style={[styles.actionBtn, { flex: 1, backgroundColor: '#EF4444', borderWidth: 0 }]}
+                          >
+                            <ThemedText style={[styles.actionText, { color: '#fff' }]} numberOfLines={1}>
+                              Yes, cancel ride
+                            </ThemedText>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => setCancelConfirmId(null)}
+                            style={[styles.actionBtn, { flex: 1, backgroundColor: inputBg, borderWidth: 0 }]}
+                          >
+                            <ThemedText style={[styles.actionText, { color: textPri }]} numberOfLines={1}>
+                              Never mind
+                            </ThemedText>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() => setCancelConfirmId(r.id)}
+                        style={[styles.actionBtn, { backgroundColor: '#EF444414', borderColor: '#EF444430', borderWidth: 1 }]}
+                      >
+                        <ThemedText style={[styles.actionText, { color: '#EF4444' }]} numberOfLines={1}>Cancel</ThemedText>
+                      </Pressable>
+                    )
                   )}
                 </View>
               </View>

@@ -1,127 +1,248 @@
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Radius, Shadow } from '@/constants/theme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
-import { useThemeColors } from '@/hooks/use-theme-color';
 import { createBooking } from '@/lib/bookings';
 import { getRide, type Ride } from '@/lib/rides';
+
+const NAVY = '#08111F';
+const NAVY_2 = '#0E1E35';
+const ACCENT = '#FF6B35';
+const TEAL = '#00C9B1';
+
+function formatDepart(d: Date) {
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
 
 export default function ConfirmBookingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const { rideId } = useLocalSearchParams<{ rideId: string }>();
-  const c = useThemeColors();
-  const { session } = useSession();
+  const { session, loading: sessionLoading } = useSession();
 
   const [ride, setRide] = useState<Ride | null>(null);
   const [loadingRide, setLoadingRide] = useState(true);
-  const [seats, setSeats] = useState('1');
+  const [seatCount, setSeatCount] = useState(1);
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState(false);
+
+  const textPri = isDark ? '#FFF' : NAVY;
+  const textSub = isDark ? 'rgba(255,255,255,0.50)' : 'rgba(8,17,31,0.48)';
+  const hair = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(8,17,31,0.09)';
+  const inputBg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(8,17,31,0.05)';
+  const cardBg = isDark ? NAVY_2 : '#FFF';
+  const bg = isDark ? NAVY : '#F5F7FA';
+
+  useEffect(() => {
+    if (sessionLoading || !rideId) return;
+    if (!session) {
+      router.replace({
+        pathname: '/auth',
+        params: {
+          redirect: `/bookings/confirm?rideId=${encodeURIComponent(rideId)}`,
+        },
+      });
+    }
+  }, [session, sessionLoading, rideId, router]);
 
   useEffect(() => {
     if (!rideId) return;
-    getRide(rideId).then(r => { setRide(r); setLoadingRide(false); });
+    getRide(rideId).then(r => {
+      setRide(r);
+      setSeatCount(1);
+      setLoadingRide(false);
+    });
   }, [rideId]);
 
   async function onBook() {
     if (!session || !ride || booking) return;
-    const n = Number(seats);
-    if (!n || n < 1 || n > ride.seats) { setError(`Enter between 1 and ${ride.seats} seats`); return; }
-    setError(''); setBooking(true);
+    setError('');
+    setBooking(true);
     try {
-      await createBooking(ride.id, session.userId, n);
-      setDone(true);
-    } catch (e: any) {
-      setError(e.message ?? 'Booking failed');
+      await createBooking(ride.id, session.userId, seatCount);
+      router.replace('/my-bookings');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Booking failed';
+      setError(msg);
     } finally {
       setBooking(false);
     }
   }
 
-  if (loadingRide) {
+  if (sessionLoading || loadingRide || !session) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>
+      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+        <View style={styles.center}>
+          <ActivityIndicator color={ACCENT} size="large" />
+        </View>
       </SafeAreaView>
     );
   }
 
   if (!ride) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
         <View style={styles.center}>
-          <ThemedText style={[styles.title, { color: c.text }]}>Ride not found</ThemedText>
-          <Pressable onPress={() => router.back()} style={styles.btn}><ThemedText style={styles.btnText}>Go back</ThemedText></Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (done) {
-    return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
-        <View style={styles.center}>
-          <ThemedText style={{ fontSize: 48 }}>🎉</ThemedText>
-          <ThemedText style={[styles.title, { color: c.text }]}>Booking requested!</ThemedText>
-          <ThemedText style={[styles.sub, { color: c.subText }]}>The driver will confirm your seat.</ThemedText>
-          <Pressable onPress={() => router.replace('/my-bookings')} style={styles.btn}>
-            <ThemedText style={styles.btnText}>View my bookings</ThemedText>
+          <ThemedText style={[styles.title, { color: textPri }]}>Ride not found</ThemedText>
+          <Pressable onPress={() => router.back()} style={[styles.outlineBtn, { borderColor: hair }]}>
+            <ThemedText style={[styles.outlineBtnText, { color: textPri }]}>Go back</ThemedText>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const total = ride.priceRwf * (Number(seats) || 0);
+  const depart = new Date(ride.departAtISO);
+  const total = ride.priceRwf * seatCount;
+  const maxSeats = Math.max(1, ride.seats);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: c.hairline }]}>
-        <Pressable onPress={() => router.back()}>
-          <ThemedText style={[styles.back, { color: Colors.accent }]}>← Back</ThemedText>
+    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
+        <Pressable onPress={() => router.back()} hitSlop={12}>
+          <IconSymbol name="chevron.left" size={20} color={ACCENT} />
         </Pressable>
-        <ThemedText style={[styles.title, { color: c.text }]}>Confirm Booking</ThemedText>
+        <ThemedText style={[styles.title, { color: textPri }]}>Confirm booking</ThemedText>
+        <View style={{ width: 20 }} />
       </View>
 
-      <View style={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}>
-        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.hairline }, Shadow.card]}>
-          <ThemedText style={[styles.route, { color: c.text }]}>{ride.fromShort} → {ride.toShort}</ThemedText>
-          <ThemedText style={[styles.meta, { color: c.subText }]}>
-            {new Date(ride.departAtISO).toLocaleString()} · {ride.seats} seats available
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Ride summary */}
+        <View style={[styles.summaryCard, { backgroundColor: cardBg, borderColor: hair }]}>
+          <View style={styles.chipRow}>
+            <View style={[styles.chip, { backgroundColor: TEAL + '18' }]}>
+              <ThemedText style={[styles.chipText, { color: TEAL }]}>{ride.fromShort}</ThemedText>
+            </View>
+            <ThemedText style={[styles.arrow, { color: textSub }]}>→</ThemedText>
+            <View style={[styles.chip, { backgroundColor: ACCENT + '18' }]}>
+              <ThemedText style={[styles.chipText, { color: ACCENT }]}>{ride.toShort}</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.metaRow}>
+            <IconSymbol name="clock.fill" size={13} color={textSub} />
+            <ThemedText style={[styles.metaText, { color: textSub }]}>
+              {Number.isNaN(depart.getTime()) ? ride.departAtISO : formatDepart(depart)}
+            </ThemedText>
+          </View>
+
+          <ThemedText style={[styles.priceLine, { color: textPri }]}>
+            RWF {ride.priceRwf.toLocaleString()}
+            <ThemedText style={[styles.pricePer, { color: textSub }]}> / seat</ThemedText>
           </ThemedText>
-          {ride.note ? <ThemedText style={[styles.note, { color: c.subText }]}>{ride.note}</ThemedText> : null}
-          <ThemedText style={[styles.price, { color: Colors.accent }]}>RWF {ride.priceRwf.toLocaleString()} / seat</ThemedText>
+
+          {ride.note ? (
+            <View style={[styles.noteBox, { backgroundColor: inputBg }]}>
+              <IconSymbol name="text.bubble.fill" size={12} color={textSub} />
+              <ThemedText style={[styles.noteText, { color: textSub }]}>{ride.note}</ThemedText>
+            </View>
+          ) : null}
         </View>
 
-        <View style={styles.fieldGroup}>
-          <ThemedText style={[styles.label, { color: c.subText }]}>Number of seats</ThemedText>
-          <TextInput
-            value={seats}
-            onChangeText={v => { setSeats(v.replace(/\D/g, '')); setError(''); }}
-            keyboardType="number-pad"
-            style={[styles.input, { color: c.text, borderColor: c.hairline, backgroundColor: c.inputBg }]}
-            maxLength={2}
-          />
+        {/* Seat stepper */}
+        <View style={[styles.stepperCard, { backgroundColor: cardBg, borderColor: hair }]}>
+          <ThemedText style={[styles.stepperLabel, { color: textSub }]}>Number of seats</ThemedText>
+          <View style={styles.stepperRow}>
+            <Pressable
+              onPress={() => setSeatCount(n => Math.max(1, n - 1))}
+              disabled={seatCount <= 1}
+              style={[
+                styles.stepperBtn,
+                { backgroundColor: inputBg, borderColor: hair, opacity: seatCount <= 1 ? 0.4 : 1 },
+              ]}
+            >
+              <ThemedText style={[styles.stepperBtnText, { color: textPri }]}>−</ThemedText>
+            </Pressable>
+            <ThemedText style={[styles.stepperValue, { color: textPri }]}>{seatCount}</ThemedText>
+            <Pressable
+              onPress={() => setSeatCount(n => Math.min(maxSeats, n + 1))}
+              disabled={seatCount >= maxSeats}
+              style={[
+                styles.stepperBtn,
+                { backgroundColor: inputBg, borderColor: hair, opacity: seatCount >= maxSeats ? 0.4 : 1 },
+              ]}
+            >
+              <ThemedText style={[styles.stepperBtnText, { color: textPri }]}>+</ThemedText>
+            </Pressable>
+          </View>
+          <ThemedText style={[styles.stepperHint, { color: textSub }]}>
+            {maxSeats} seat{maxSeats === 1 ? '' : 's'} available on this ride
+          </ThemedText>
         </View>
 
-        {total > 0 && (
-          <ThemedText style={[styles.total, { color: c.text }]}>
-            Total: <ThemedText style={{ color: Colors.accent }}>RWF {total.toLocaleString()}</ThemedText>
+        {/* Payment method */}
+        <View style={{ gap: 8 }}>
+          <ThemedText style={[styles.stepperLabel, { color: textSub, alignSelf: 'flex-start' }]}>
+            Payment method
           </ThemedText>
-        )}
+          <View
+            style={{
+              backgroundColor: inputBg,
+              borderColor: hair,
+              borderWidth: 1,
+              borderRadius: 14,
+              padding: 14,
+              gap: 6,
+            }}
+          >
+            <ThemedText style={{ fontSize: 15, fontWeight: '800', color: textPri }}>
+              💵 Pay on pickup (cash)
+            </ThemedText>
+            <ThemedText style={{ fontSize: 13, fontWeight: '500', lineHeight: 18, color: textSub }}>
+              You'll pay the driver directly when they pick you up.
+            </ThemedText>
+          </View>
+        </View>
+
+        {/* Total */}
+        <View style={[styles.totalRow, { borderColor: hair }]}>
+          <ThemedText style={[styles.totalLabel, { color: textSub }]}>Total</ThemedText>
+          <ThemedText style={[styles.totalValue, { color: textPri }]}>
+            RWF {total.toLocaleString()}
+          </ThemedText>
+        </View>
 
         {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
 
-        <Pressable onPress={onBook} disabled={booking} style={[styles.btn, { opacity: booking ? 0.6 : 1 }]}>
-          {booking ? <ActivityIndicator color="white" /> : <ThemedText style={styles.btnText}>Request Booking</ThemedText>}
+        <Pressable onPress={onBook} disabled={booking} style={{ opacity: booking ? 0.65 : 1 }}>
+          <LinearGradient
+            colors={[ACCENT, '#FF4500']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.confirmGrad}
+          >
+            {booking ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <ThemedText style={styles.confirmText}>Confirm & Request</ThemedText>
+            )}
+          </LinearGradient>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -129,21 +250,80 @@ export default function ConfirmBookingScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14, padding: 24 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1 },
-  back: { fontSize: 15, fontWeight: '700' },
-  title: { fontSize: 20, fontWeight: '900' },
-  sub: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  scroll: { padding: 20, gap: 16 },
-  card: { borderRadius: Radius.lg, borderWidth: 1, padding: 16, gap: 6 },
-  route: { fontSize: 17, fontWeight: '900' },
-  meta: { fontSize: 13, fontWeight: '600' },
-  note: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  price: { fontSize: 14, fontWeight: '900' },
-  fieldGroup: { gap: 6 },
-  label: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 14, height: 48, fontSize: 18, fontWeight: '900' },
-  total: { fontSize: 16, fontWeight: '800' },
-  errorText: { color: Colors.danger, fontSize: 13, fontWeight: '700' },
-  btn: { height: 52, borderRadius: Radius.lg, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: 'white', fontSize: 15, fontWeight: '900' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  title: { fontSize: 18, fontWeight: '900' },
+  scroll: { padding: 16, gap: 14 },
+  summaryCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 10 },
+  chipRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  chip: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  chipText: { fontSize: 13, fontWeight: '900' },
+  arrow: { fontSize: 12, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { fontSize: 13, fontWeight: '600' },
+  priceLine: { fontSize: 16, fontWeight: '900' },
+  pricePer: { fontSize: 13, fontWeight: '600' },
+  noteBox: { flexDirection: 'row', gap: 8, borderRadius: 10, padding: 10, alignItems: 'flex-start' },
+  noteText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  stepperCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingTop: 18,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    gap: 12,
+    alignItems: 'center',
+  },
+  stepperLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  stepperBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnText: { fontSize: 22, fontWeight: '400', lineHeight: 26 },
+  stepperValue: { fontSize: 28, fontWeight: '900', minWidth: 40, textAlign: 'center' },
+  stepperHint: { fontSize: 12, fontWeight: '600' },
+  totalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+  },
+  totalLabel: { fontSize: 14, fontWeight: '700' },
+  totalValue: { fontSize: 20, fontWeight: '900' },
+  errorText: { color: '#EF4444', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  confirmGrad: {
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  outlineBtn: {
+    height: 44,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outlineBtnText: { fontSize: 14, fontWeight: '700' },
 }) as any;

@@ -40,7 +40,6 @@ const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
 const ACCENT = '#FF6B35';
 const TEAL = '#00C9B1';
-const GOLD = '#F5C842';
 const SURFACE = 'rgba(8,17,31,0.94)';
 const SURFACE_LT = 'rgba(255,255,255,0.98)';
 const HAIRLINE = 'rgba(255,255,255,0.10)';
@@ -637,8 +636,7 @@ export default function FindRideScreen() {
                         </View>
 
                         {results.length === 0 && (
-                            <View style={[styles.noResults, { borderColor: hair, backgroundColor: inputBg }]}>
-                                <ThemedText style={{ fontSize: 36, textAlign: 'center' }}>🛣️</ThemedText>
+                            <View style={[styles.noResults, { borderColor: hair, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#FFF' }]}>
                                 <ThemedText style={[styles.noResultsTitle, { color: textPri }]}>
                                     No rides on this route
                                 </ThemedText>
@@ -647,9 +645,11 @@ export default function FindRideScreen() {
                                 </ThemedText>
                                 <Pressable
                                     onPress={() => router.push('/post-ride' as any)}
-                                    style={styles.postRideBtn}
+                                    style={[styles.postRideBtn, { borderColor: hair }]}
                                 >
-                                    <ThemedText style={styles.postRideBtnText}>Post a ride →</ThemedText>
+                                    <ThemedText style={[styles.postRideBtnText, { color: textPri }]}>
+                                        Post a ride
+                                    </ThemedText>
                                 </Pressable>
                             </View>
                         )}
@@ -685,37 +685,33 @@ function RideCard({ ride, expanded, onToggle, onBook, onManage, isOwn, isDark, h
     isDark: boolean; hair: string; textPri: string; textSub: string; inputBg: string;
 }) {
     const depart = new Date(ride.departAtISO);
-    const bg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(8,17,31,0.03)';
+    const cardBg = isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF';
 
     return (
-        <Pressable onPress={onToggle} style={[styles.card, { backgroundColor: bg, borderColor: hair }]}>
+        <Pressable onPress={onToggle} style={[styles.card, { backgroundColor: cardBg, borderColor: hair }]}>
             <View style={styles.cardTop}>
-                <View style={styles.chipRow}>
-                    <View style={[styles.chip, { backgroundColor: TEAL + '18' }]}>
-                        <ThemedText style={[styles.chipText, { color: TEAL }]}>{ride.fromShort}</ThemedText>
-                    </View>
-                    <ThemedText style={{ fontSize: 11, color: textSub }}>→</ThemedText>
-                    <View style={[styles.chip, { backgroundColor: ACCENT + '18' }]}>
-                        <ThemedText style={[styles.chipText, { color: ACCENT }]}>{ride.toShort}</ThemedText>
-                    </View>
+                <View style={styles.routeCol}>
+                    <ThemedText style={[styles.routeLine, { color: textPri }]} numberOfLines={1}>
+                        {ride.fromShort}
+                    </ThemedText>
+                    <ThemedText style={[styles.routeArrow, { color: textSub }]}>→ {ride.toShort}</ThemedText>
                 </View>
                 <View style={styles.priceCol}>
-                    <ThemedText style={styles.price}>RWF {ride.priceRwf.toLocaleString()}</ThemedText>
+                    <ThemedText style={[styles.price, { color: textPri }]}>
+                        RWF {ride.priceRwf.toLocaleString()}
+                    </ThemedText>
                     <ThemedText style={[styles.priceSub, { color: textSub }]}>/ seat</ThemedText>
                 </View>
             </View>
 
             <View style={styles.metaRow}>
-                <View style={[styles.metaChip, { backgroundColor: inputBg }]}>
-                    <IconSymbol name="clock.fill" size={11} color={textSub} />
-                    <ThemedText style={[styles.metaText, { color: textSub }]}>
-                        {Number.isNaN(depart.getTime()) ? ride.departAtISO : formatDepart(depart)}
-                    </ThemedText>
-                </View>
-                <View style={[styles.metaChip, { backgroundColor: inputBg }]}>
-                    <IconSymbol name="person.2.fill" size={11} color={textSub} />
-                    <ThemedText style={[styles.metaText, { color: textSub }]}>{ride.seats} seats</ThemedText>
-                </View>
+                <ThemedText style={[styles.metaInline, { color: textSub }]}>
+                    {Number.isNaN(depart.getTime()) ? ride.departAtISO : formatDepart(depart)}
+                </ThemedText>
+                <ThemedText style={[styles.metaDot, { color: textSub }]}>·</ThemedText>
+                <ThemedText style={[styles.metaInline, { color: textSub }]}>
+                    {ride.seats} seat{ride.seats === 1 ? '' : 's'}
+                </ThemedText>
                 <View style={{ flex: 1 }} />
                 <IconSymbol name={expanded ? 'chevron.up' : 'chevron.down'} size={12} color={textSub} />
             </View>
@@ -723,21 +719,15 @@ function RideCard({ ride, expanded, onToggle, onBook, onManage, isOwn, isDark, h
             {expanded && (
                 <View style={[styles.cardExpanded, { borderTopColor: hair }]}>
                     {ride.note ? (
-                        <View style={[styles.noteWrap, { backgroundColor: inputBg }]}>
-                            <IconSymbol name="text.bubble.fill" size={12} color={textSub} />
-                            <ThemedText style={[styles.noteText, { color: textSub }]}>{ride.note}</ThemedText>
-                        </View>
+                        <ThemedText style={[styles.noteText, { color: textSub }]}>{ride.note}</ThemedText>
                     ) : null}
-                    <Pressable onPress={isOwn ? onManage : onBook} style={styles.ctaBtn}>
-                        <LinearGradient
-                            colors={isOwn ? ['#0EA5E9', '#0369A1'] : [ACCENT, '#FF4500']}
-                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                            style={styles.ctaBtnGrad}
-                        >
-                            <ThemedText style={styles.ctaBtnText}>
-                                {isOwn ? 'Manage ride' : 'Book this ride →'}
-                            </ThemedText>
-                        </LinearGradient>
+                    <Pressable
+                        onPress={isOwn ? onManage : onBook}
+                        style={[styles.ctaBtn, { backgroundColor: inputBg, borderColor: hair }]}
+                    >
+                        <ThemedText style={[styles.ctaBtnText, { color: textPri }]}>
+                            {isOwn ? 'Manage ride' : 'Book this ride'}
+                        </ThemedText>
                     </Pressable>
                 </View>
             )}
@@ -881,33 +871,31 @@ const styles = StyleSheet.create({
     resultsCount: { fontSize: 18, fontWeight: '900' },
     routeLabel: { fontSize: 12, fontWeight: '600', marginTop: 2 },
     closeBtn: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    noResults: { borderRadius: 20, borderWidth: 1, padding: 28, alignItems: 'center', gap: 8 },
-    noResultsTitle: { fontSize: 17, fontWeight: '900' },
-    noResultsSub: { fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 18 },
+    noResults: { borderRadius: 16, borderWidth: 1, padding: 24, alignItems: 'center', gap: 8 },
+    noResultsTitle: { fontSize: 16, fontWeight: '800' },
+    noResultsSub: { fontSize: 13, fontWeight: '500', textAlign: 'center', lineHeight: 18 },
     postRideBtn: {
-        marginTop: 4, height: 38, paddingHorizontal: 16,
-        borderRadius: 10, backgroundColor: ACCENT, justifyContent: 'center',
+        marginTop: 8, height: 40, paddingHorizontal: 18,
+        borderRadius: 10, borderWidth: 1, justifyContent: 'center',
     },
-    postRideBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+    postRideBtnText: { fontSize: 14, fontWeight: '700' },
 
-    card: { borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },
-    cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-    chipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, flexWrap: 'wrap' },
-    chip: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-    chipText: { fontSize: 13, fontWeight: '900' },
-    priceCol: { alignItems: 'flex-end' },
-    price: { fontSize: 15, fontWeight: '900', color: GOLD },
-    priceSub: { fontSize: 10, fontWeight: '700', marginTop: 1 },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    metaChip: {
-        flexDirection: 'row', alignItems: 'center',
-        gap: 4, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4,
+    card: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
+    cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+    routeCol: { flex: 1, gap: 2 },
+    routeLine: { fontSize: 15, fontWeight: '800' },
+    routeArrow: { fontSize: 14, fontWeight: '600' },
+    priceCol: { alignItems: 'flex-end', flexShrink: 0 },
+    price: { fontSize: 14, fontWeight: '800' },
+    priceSub: { fontSize: 11, fontWeight: '500', marginTop: 1 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    metaInline: { fontSize: 12, fontWeight: '500' },
+    metaDot: { fontSize: 12, fontWeight: '500' },
+    cardExpanded: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, gap: 10 },
+    noteText: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+    ctaBtn: {
+        height: 44, borderRadius: 10, borderWidth: 1,
+        alignItems: 'center', justifyContent: 'center',
     },
-    metaText: { fontSize: 11, fontWeight: '700' },
-    cardExpanded: { borderTopWidth: 1, paddingTop: 12, gap: 10 },
-    noteWrap: { flexDirection: 'row', gap: 8, borderRadius: 10, padding: 10, alignItems: 'flex-start' },
-    noteText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '600' },
-    ctaBtn: { borderRadius: 14, overflow: 'hidden' },
-    ctaBtnGrad: { height: 46, alignItems: 'center', justifyContent: 'center' },
-    ctaBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+    ctaBtnText: { fontSize: 14, fontWeight: '700' },
 }) as any;

@@ -1,23 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverActions: true,
-  },
-  // Optimize bundle size and loading
+  reactStrictMode: true,
   swcMinify: true,
-  // Enable compression
   compress: true,
-  // Optimize images
   images: {
     formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+    ],
   },
-  // Reduce warnings in production
-  logging: {
-    fetches: {
-      fullUrl: false,
-    },
-  },
-}
+};
 
-module.exports = nextConfig
-
+module.exports = nextConfig;

@@ -3,263 +3,301 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #0b1220;
-
-  /* Brand */
-  --primary: 37 99 235; /* blue-600 */
-  --primary-700: 29 78 216; /* blue-700 */
-  --accent: 99 102 241; /* indigo-500 */
-
-  /* Surfaces */
-  --muted: 100 116 139; /* slate-500 */
-  --border: 226 232 240; /* slate-200 */
-  --card: 255 255 255;
-  --card-2: 248 250 252; /* slate-50 */
+  --navy: #08111f;
+  --navy-2: #0e1e35;
+  --accent: #ff6b35;
+  --accent-2: #ff4500;
+  --teal: #00c9b1;
+  --gold: #f5c842;
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.55);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --surface: rgba(255, 255, 255, 0.05);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Force light theme; dark mode disabled for consistent verification/admin UX */
 html {
-  color-scheme: light;
+  scroll-behavior: smooth;
+  color-scheme: dark;
+  background-color: var(--navy);
 }
 
 body {
-  color: var(--foreground);
-  background: radial-gradient(900px 500px at 10% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
-    radial-gradient(900px 500px at 90% 10%, rgba(99, 102, 241, 0.10), transparent 55%),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  font-family: var(--font-poppins), 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background: var(--navy);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.011em;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(255, 107, 53, 0.4);
+  color: #fff;
 }
 
 @layer components {
-  .ws-shell {
-    @apply min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50;
-  }
-
   .ws-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-page px-5 sm:px-8;
   }
 
+  .ws-section {
+    @apply py-20 md:py-28;
+  }
+
+  .ws-eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-teal;
+  }
+
+  /* ── Cards ─────────────────────────────────────────────── */
   .ws-card {
-    @apply bg-white/90 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    transition: all 0.25s var(--ease);
+  }
+  .ws-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
   }
 
-  .ws-card-elevated {
-    @apply bg-white border border-slate-200 rounded-2xl shadow-xl;
-  }
-
-  .ws-input {
-    @apply w-full px-4 py-3 bg-white border border-slate-300 rounded-xl outline-none text-slate-900 placeholder:text-slate-500;
-    @apply focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500;
-  }
-
-  .ws-btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all;
-    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  /* ── Buttons ───────────────────────────────────────────── */
+  .ws-pill-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-extrabold;
+    transition: all 0.25s var(--ease);
   }
 
   .ws-btn-primary {
-    @apply ws-btn text-white shadow-lg hover:shadow-xl transform-gpu hover:-translate-y-0.5;
-    @apply bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700;
+    @apply ws-pill-btn text-white;
+    background-image: linear-gradient(135deg, #ff6b35, #ff4500);
+    box-shadow: 0 10px 26px rgba(255, 107, 53, 0.22);
+  }
+  .ws-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(255, 107, 53, 0.35);
   }
 
-  .ws-btn-secondary {
-    @apply ws-btn bg-white text-slate-700 border-2 border-slate-300 shadow-sm hover:shadow-md;
-    @apply hover:border-blue-500 hover:text-blue-700;
+  .ws-btn-outline {
+    @apply ws-pill-btn text-white;
+    background: transparent;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+  }
+  .ws-btn-outline:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 30px rgba(255, 255, 255, 0.12);
   }
 
-  .ws-badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border;
+  /* ── LinkedIn pill (team) ─────────────────────────────── */
+  .ws-li-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(10, 102, 194, 0.12);
+    border: 1px solid rgba(10, 102, 194, 0.3);
+    color: #0a66c2;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    transition: background-color 0.2s ease;
+  }
+  .ws-li-pill:hover {
+    background: rgba(10, 102, 194, 0.22);
   }
 
-  .ws-badge-success {
-    @apply ws-badge bg-emerald-50 text-emerald-700 border-emerald-200;
+  /* ── Cost calculator inputs ───────────────────────────── */
+  .ws-calc-label {
+    @apply mb-2 block text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/55;
+  }
+  .ws-calc-input,
+  .ws-calc-static,
+  .ws-calc-stepper {
+    width: 100%;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(8, 17, 31, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1;
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+  .ws-calc-input {
+    padding: 0 38px 0 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff80' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+  }
+  .ws-calc-input:focus,
+  .ws-calc-input:focus-visible {
+    outline: none;
+    border-color: rgba(255, 107, 53, 0.7);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
+  }
+  .ws-calc-input option {
+    color: #08111f;
+    background: #ffffff;
+  }
+  .ws-calc-static {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    color: rgba(255, 255, 255, 0.85);
+    font-variant-numeric: tabular-nums;
+  }
+  .ws-calc-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 6px;
+  }
+  .ws-calc-step-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-weight: 900;
+    font-size: 18px;
+    line-height: 1;
+    transition: background-color 0.2s ease, border-color 0.2s ease,
+      color 0.2s ease;
+  }
+  .ws-calc-step-btn:hover {
+    background: rgba(255, 107, 53, 0.18);
+    border-color: rgba(255, 107, 53, 0.5);
+    color: #fff;
+  }
+  .ws-calc-step-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ws-calc-step-value {
+    font-weight: 900;
+    font-size: 18px;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    min-width: 24px;
+    text-align: center;
   }
 
-  .ws-badge-neutral {
-    @apply ws-badge bg-slate-50 text-slate-700 border-slate-200;
+  /* ── Navbar transparent ↔ glass ───────────────────────── */
+  .ws-nav {
+    transition: background-color 0.4s var(--ease),
+      backdrop-filter 0.4s var(--ease),
+      -webkit-backdrop-filter 0.4s var(--ease),
+      border-color 0.4s var(--ease),
+      box-shadow 0.4s var(--ease);
+  }
+  .ws-nav-transparent {
+    background-color: rgba(8, 17, 31, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .ws-nav-glass {
+    background-color: rgba(8, 17, 31, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* ── Animated background blobs ─────────────────────────────── */
+@keyframes blob-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -60px) scale(1.15); }
+  66% { transform: translate(-30px, 30px) scale(0.9); }
 }
 
-/* Custom Animations */
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes blob-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-50px, 40px) scale(0.95); }
+  66% { transform: translate(40px, -30px) scale(1.1); }
 }
 
-@keyframes slide-in-left {
-  from {
-    opacity: 0;
-    transform: translateX(-50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.ws-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+  will-change: transform;
 }
 
-@keyframes bounce-slow {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+.ws-blob-teal {
+  background: radial-gradient(circle, rgba(0, 201, 177, 0.55), transparent 70%);
+  animation: blob-drift-a 18s ease-in-out infinite;
 }
 
-@keyframes ping-slow {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
+.ws-blob-orange {
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.55), transparent 70%);
+  animation: blob-drift-b 22s ease-in-out infinite;
 }
 
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
+.ws-fade-up {
+  animation: fade-up 0.7s var(--ease) both;
 }
 
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 0.1;
-  }
-  50% {
-    opacity: 0.3;
-  }
+/* ── Hero background image slow zoom ───────────────────────── */
+@keyframes hero-zoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
 }
 
-@keyframes gradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+.hero-zoom {
+  animation: hero-zoom 12s ease-in-out infinite alternate;
+  will-change: transform;
+  transform-origin: center;
 }
 
-@keyframes draw-path {
-  0% {
-    stroke-dasharray: 0 1000;
-  }
-  100% {
-    stroke-dasharray: 1000 0;
-  }
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s ease-out forwards;
+/* ── Scroll-reveal ─────────────────────────────────────────── */
+.reveal {
   opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.animate-slide-in-left {
-  animation: slide-in-left 0.8s ease-out forwards;
-  opacity: 0;
-}
-
-.animate-slide-in-right {
-  animation: slide-in-right 0.8s ease-out forwards;
-  opacity: 0;
-}
-
-.animate-bounce-slow {
-  animation: bounce-slow 2s ease-in-out infinite;
-}
-
-.animate-ping-slow {
-  animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-.animate-blob {
-  animation: blob 7s infinite;
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 4s ease-in-out infinite;
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient 3s ease infinite;
-}
-
-.animate-draw-path {
-  animation: draw-path 2s ease-out forwards;
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-}
-
-.animation-delay-200 {
-  animation-delay: 0.2s;
-}
-
-.animation-delay-400 {
-  animation-delay: 0.4s;
-}
-
-.animation-delay-600 {
-  animation-delay: 0.6s;
-}
-
-.animation-delay-800 {
-  animation-delay: 0.8s;
-}
-
-.animation-delay-1000 {
-  animation-delay: 1s;
-}
-
-.animation-delay-1200 {
-  animation-delay: 1.2s;
-}
-
-.animation-delay-1400 {
-  animation-delay: 1.4s;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
+/* ── Reduced motion ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ws-blob-teal,
+  .ws-blob-orange,
+  .ws-fade-up,
+  .hero-zoom {
+    animation: none !important;
+  }
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .ws-card:hover,
+  .ws-btn-primary:hover,
+  .ws-btn-outline:hover {
+    transform: none !important;
+  }
 }

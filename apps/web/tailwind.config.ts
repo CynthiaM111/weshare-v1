@@ -2,26 +2,39 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        brand: {
-          primary: "rgb(var(--primary) / <alpha-value>)",
-          accent: "rgb(var(--accent) / <alpha-value>)",
-          muted: "rgb(var(--muted) / <alpha-value>)",
-          border: "rgb(var(--border) / <alpha-value>)",
-          card: "rgb(var(--card) / <alpha-value>)",
+        navy: {
+          DEFAULT: "#08111F",
+          900: "#08111F",
+          800: "#0E1E35",
         },
+        accent: "#FF6B35",
+        accent2: "#FF4500",
+        teal: "#00C9B1",
+        gold: "#F5C842",
+      },
+      fontFamily: {
+        sans: [
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "sans-serif",
+        ],
+      },
+      maxWidth: {
+        page: "1200px",
       },
     },
   },
   plugins: [],
 };
-export default config;
 
+export default config;

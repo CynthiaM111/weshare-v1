@@ -1,4 +1,6 @@
 import Navbar from "@/components/Navbar";
+import FuelPriceBanner from "@/components/FuelPriceBanner";
+import FloatingCalculator from "@/components/FloatingCalculator";
 import Hero from "@/components/sections/Hero";
 import Affordability from "@/components/sections/Affordability";
 import HowItWorks from "@/components/sections/HowItWorks";
@@ -13,6 +15,8 @@ export default function HomePage() {
   return (
     <>
       <Navbar />
+      <FuelPriceBanner />
+      <FloatingCalculator />
       <main>
         <Hero />
         <WaveDivider />

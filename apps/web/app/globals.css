@@ -112,85 +112,201 @@ body {
     background: rgba(10, 102, 194, 0.22);
   }
 
-  /* ── Cost calculator inputs ───────────────────────────── */
-  .ws-calc-label {
-    @apply mb-2 block text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/55;
+  /* ── Floating fare calculator ─────────────────────────── */
+  .ws-floating-calc {
+    position: fixed;
+    z-index: 50;
+    left: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 280px;
   }
-  .ws-calc-input,
-  .ws-calc-static,
-  .ws-calc-stepper {
-    width: 100%;
-    height: 52px;
-    border-radius: 14px;
-    background: rgba(8, 17, 31, 0.55);
+  .ws-floating-calc-inner {
+    background: rgba(8, 17, 31, 0.92);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #fff;
-    font-weight: 700;
-    font-size: 15px;
-    line-height: 1;
-    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+    border-left: 2px solid #00c9b1;
+    border-radius: 20px;
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.4),
+      -1px 0 14px rgba(0, 201, 177, 0.2);
+    animation: ws-calc-glow 4.2s ease-in-out infinite;
   }
-  .ws-calc-input {
-    padding: 0 38px 0 14px;
+  /* Below 1024px (tablets + phones) the calc docks to the bottom so it never
+     overlays page content sideways. */
+  @media (max-width: 1023px) {
+    .ws-floating-calc {
+      left: 12px;
+      right: 12px;
+      top: auto;
+      bottom: 80px;
+      transform: none;
+      width: auto;
+    }
+  }
+
+  /* Reserve space for the bottom-pinned calculator so the last section
+     and footer stay scrollable above it. */
+  @media (max-width: 1023px) {
+    body {
+      padding-bottom: 156px;
+    }
+  }
+
+  /* On desktop the side-pinned calc occupies left: 24px → 304px of the
+     viewport. Shift content inside <main> AND the footer right so it clears
+     the calc + a comfortable buffer. The navbar (<header>) is intentionally
+     excluded — it stays full-width with the logo on the left. */
+  @media (min-width: 1024px) {
+    main .ws-container,
+    footer .ws-container {
+      padding-left: 340px;
+    }
+  }
+
+  .ws-fc-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .ws-fc-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+  }
+  .ws-fc-select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #fff;
+    padding: 8px 30px 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
     appearance: none;
     -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff80' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff80' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
     background-repeat: no-repeat;
-    background-position: right 14px center;
+    background-position: right 10px center;
     cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
-  .ws-calc-input:focus,
-  .ws-calc-input:focus-visible {
+  .ws-fc-select:focus,
+  .ws-fc-select:focus-visible {
     outline: none;
-    border-color: rgba(255, 107, 53, 0.7);
-    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
+    border-color: #ff6b35;
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
   }
-  .ws-calc-input option {
+  .ws-fc-select option {
     color: #08111f;
     background: #ffffff;
   }
-  .ws-calc-static {
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-    color: rgba(255, 255, 255, 0.85);
-    font-variant-numeric: tabular-nums;
-  }
-  .ws-calc-stepper {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 6px;
-  }
-  .ws-calc-step-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  .ws-fc-step {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     color: #fff;
+    font-size: 16px;
     font-weight: 900;
-    font-size: 18px;
     line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     transition: background-color 0.2s ease, border-color 0.2s ease,
-      color 0.2s ease;
+      transform 0.15s ease;
   }
-  .ws-calc-step-btn:hover {
+  .ws-fc-step:hover:not(:disabled) {
     background: rgba(255, 107, 53, 0.18);
     border-color: rgba(255, 107, 53, 0.5);
-    color: #fff;
   }
-  .ws-calc-step-btn:disabled {
-    opacity: 0.4;
+  .ws-fc-step:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+  .ws-fc-step:disabled {
+    opacity: 0.35;
     cursor: not-allowed;
   }
-  .ws-calc-step-value {
-    font-weight: 900;
-    font-size: 18px;
-    color: #fff;
-    font-variant-numeric: tabular-nums;
-    min-width: 24px;
+
+  /* ── Fuel-price marquee banner ────────────────────────── */
+  .ws-fuel-banner {
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 107, 53, 0.15),
+      rgba(0, 201, 177, 0.15)
+    );
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 24px;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent,
+      black 24px,
+      black calc(100% - 24px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      black 24px,
+      black calc(100% - 24px),
+      transparent
+    );
+  }
+  .ws-marquee-track {
+    display: inline-flex;
+    white-space: nowrap;
+    will-change: transform;
+    animation: ws-marquee 30s linear infinite;
+  }
+  .ws-marquee-content {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    padding-right: 48px;
+  }
+
+  /* ── Pulsing live dot (hero card) ─────────────────────── */
+  .ws-pulse-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    animation: ws-pulse-dot 1.8s ease-out infinite;
+    flex-shrink: 0;
+  }
+
+  /* ── Rotating fact text ───────────────────────────────── */
+  .ws-fact-text {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.45);
     text-align: center;
+    min-height: 20px;
+    margin: 0;
+    animation: ws-fact-in 0.5s ease-out;
   }
 
   /* ── Navbar transparent ↔ glass ───────────────────────── */
@@ -281,13 +397,59 @@ body {
   transform: translateY(0);
 }
 
+/* ── Marquee + glow + pulse + fact-fade keyframes ────────── */
+@keyframes ws-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes ws-calc-glow {
+  0%, 100% {
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.4),
+      -1px 0 14px rgba(0, 201, 177, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.4),
+      -3px 0 24px rgba(0, 201, 177, 0.55);
+  }
+}
+
+@keyframes ws-pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.65);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+    transform: scale(1.08);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes ws-fact-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Anchor-scroll offset so navbar+fuel banner don't hide section tops */
+html { scroll-padding-top: 116px; }
+
 /* ── Reduced motion ────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .ws-blob-teal,
   .ws-blob-orange,
   .ws-fade-up,
-  .hero-zoom {
+  .hero-zoom,
+  .ws-marquee-track,
+  .ws-floating-calc-inner,
+  .ws-pulse-dot,
+  .ws-fact-text {
     animation: none !important;
   }
   .reveal {

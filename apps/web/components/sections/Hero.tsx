@@ -137,6 +137,27 @@ export function Hero() {
         </div>
       </div>
 
+      {/* Live rides indicator (bottom-right, hidden on mobile to avoid the floating calculator) */}
+      <div
+        className="absolute bottom-32 right-5 z-20 hidden items-center gap-3 sm:bottom-24 sm:right-8 sm:inline-flex md:bottom-10"
+        style={{
+          background: "rgba(8,17,31,0.75)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 14,
+          padding: "12px 16px",
+        }}
+      >
+        <span aria-hidden="true" className="ws-pulse-dot" />
+        <span
+          className="text-white"
+          style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}
+        >
+          247 rides shared this week across Rwanda
+        </span>
+      </div>
+
       {/* Bottom fade into next section */}
       <div
         aria-hidden="true"

@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { CostCalculator } from "../CostCalculator";
+import type { CSSProperties, ReactNode } from "react";
 import { Reveal } from "../Reveal";
 
 type Tone = "orange" | "teal" | "gold";
@@ -32,7 +31,7 @@ const STATS: Stat[] = [
   },
 ];
 
-function toneStyle(tone: Tone): React.CSSProperties {
+function toneStyle(tone: Tone): CSSProperties {
   if (tone === "orange") {
     return {
       background: "linear-gradient(135deg, #FF6B35, #F5C842)",
@@ -103,13 +102,7 @@ export function Affordability() {
           ))}
         </div>
 
-        <Reveal delay={200}>
-          <div className="mt-12">
-            <CostCalculator />
-          </div>
-        </Reveal>
-
-        <Reveal delay={300}>
+        <Reveal delay={400}>
           <div
             className="mt-12 text-center text-white"
             style={{

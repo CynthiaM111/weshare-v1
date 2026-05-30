@@ -1,6 +1,19 @@
-import { getProfiles, profileFromRow, type UserProfile } from './auth/users';
+import { getProfile, getProfiles, passengerDisplayName, profileFromRow, type UserProfile } from './auth/users';
+import { createNotification } from './notifications';
 import { getRide, type Ride } from './rides';
 import { supabase } from './supabase';
+
+function formatDepartDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function formatDepartTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+}
 
 export type Booking = {
   id: string;
@@ -65,7 +78,36 @@ export async function createBooking(
     .single();
 
   if (error) throw new Error(error.message);
-  return rowToBooking(data);
+
+  const booking = rowToBooking(data);
+
+  // Notify the driver and the passenger (best-effort — never block the booking).
+  try {
+    const passenger = await getProfile(passengerId);
+    const passengerName = passengerDisplayName(passenger, passengerId);
+    const route = `${ride.fromShort} → ${ride.toShort}`;
+
+    await createNotification(
+      ride.postedByUserId,
+      'new_booking',
+      'New booking request',
+      `${passengerName} requested ${seats} seat${seats === 1 ? '' : 's'} on your ${route} ride`,
+      ride.id,
+      booking.id
+    );
+    await createNotification(
+      passengerId,
+      'booking_pending',
+      'Booking requested',
+      `Your request for ${route} is pending driver confirmation`,
+      ride.id,
+      booking.id
+    );
+  } catch {
+    // Ignore notification failures.
+  }
+
+  return booking;
 }
 
 export async function getBooking(bookingId: string): Promise<Booking | null> {
@@ -188,17 +230,98 @@ export async function countActiveBookingsForRides(rideIds: string[]): Promise<Re
 
 export async function updateBookingStatus(
   bookingId: string,
-  status: Booking['status']
+  status: Booking['status'],
+  cancelledBy?: 'driver' | 'passenger'
 ): Promise<string | null> {
   const { error } = await supabase
     .from('bookings')
     .update({ status })
     .eq('id', bookingId);
-  return error ? error.message : null;
+  if (error) return error.message;
+
+  // Notify the affected party (best-effort — never block the status change).
+  try {
+    if (status === 'confirmed') {
+      const booking = await getBooking(bookingId);
+      const ride = booking ? await getRide(booking.rideId) : null;
+      if (booking && ride) {
+        const route = `${ride.fromShort} → ${ride.toShort}`;
+        await createNotification(
+          booking.passengerId,
+          'booking_confirmed',
+          'Booking confirmed! 🎉',
+          `Your seat on ${route} is confirmed. Departing ${formatDepartDate(ride.departAtISO)} at ${formatDepartTime(ride.departAtISO)}`,
+          ride.id,
+          booking.id
+        );
+      }
+    } else if (status === 'cancelled' && cancelledBy) {
+      const booking = await getBooking(bookingId);
+      const ride = booking ? await getRide(booking.rideId) : null;
+      if (booking && ride) {
+        const route = `${ride.fromShort} → ${ride.toShort}`;
+        if (cancelledBy === 'driver') {
+          // Driver declined/cancelled this booking — notify the passenger.
+          await createNotification(
+            booking.passengerId,
+            'booking_cancelled',
+            'Booking declined',
+            `Your booking for ${route} was cancelled by the driver`,
+            ride.id,
+            booking.id
+          );
+        } else {
+          // Passenger cancelled — notify the driver.
+          const passenger = await getProfile(booking.passengerId);
+          const passengerName = passengerDisplayName(passenger, booking.passengerId);
+          await createNotification(
+            ride.postedByUserId,
+            'booking_cancelled',
+            'Booking cancelled',
+            `${passengerName} cancelled their booking on your ${route} ride`,
+            ride.id,
+            booking.id
+          );
+        }
+      }
+    }
+  } catch {
+    // Ignore notification failures.
+  }
+
+  return null;
 }
 
 export async function cancelBooking(bookingId: string): Promise<string | null> {
-  return updateBookingStatus(bookingId, 'cancelled');
+  return updateBookingStatus(bookingId, 'cancelled', 'passenger');
+}
+
+/** Driver-declines a booking: cancels it and notifies the passenger. */
+export async function declineBooking(bookingId: string, rideId: string): Promise<string | null> {
+  const { error } = await supabase
+    .from('bookings')
+    .update({ status: 'cancelled' })
+    .eq('id', bookingId);
+  if (error) return error.message;
+
+  // Notify the passenger their request was declined (best-effort).
+  try {
+    const booking = await getBooking(bookingId);
+    if (booking) {
+      await createNotification(
+        booking.passengerId,
+        'booking_declined',
+        'Booking declined',
+        'Your booking request was not accepted by the driver. Try another ride on WeShare.',
+        rideId,
+        bookingId
+      );
+    }
+  } catch {
+    // Ignore notification failures.
+  }
+
+  return null;
 }
 
 export type DriverBookingCounts = { pending: number; confirmed: number };

@@ -288,7 +288,6 @@ export default function FindRideScreen() {
         Keyboard.dismiss();
 
         try {
-            console.log('[Search] searching:', fromText.trim(), '→', toText.trim());
             const rides = await searchRides(fromText.trim(), toText.trim());
             const filtered = session
                 ? rides.filter(r => r.postedByUserId !== session.userId)

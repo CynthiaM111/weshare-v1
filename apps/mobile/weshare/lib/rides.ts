@@ -1,4 +1,11 @@
+import { createNotification } from './notifications';
 import { supabase } from './supabase';
+
+function formatDepartDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
 export type Ride = {
   id: string;
@@ -150,19 +157,65 @@ export async function updateRideStatus(
     .from('rides')
     .update({ status })
     .eq('id', rideId);
-  return error ? error.message : null;
+  if (error) return error.message;
+
+  // On completion, thank the driver and every confirmed passenger (best-effort).
+  if (status === 'completed') {
+    try {
+      const ride = await getRide(rideId);
+      if (ride) {
+        const { listBookingsForRide } = await import('./bookings');
+        const bookings = await listBookingsForRide(rideId);
+        const message = `Your ride from ${ride.fromShort} to ${ride.toShort} is complete. Thanks for riding with WeShare!`;
+        const confirmedPassengerIds = [
+          ...new Set(
+            bookings.filter(b => b.status === 'confirmed').map(b => b.passengerId)
+          ),
+        ];
+        for (const passengerId of confirmedPassengerIds) {
+          await createNotification(passengerId, 'ride_completed', 'Ride complete', message, ride.id);
+        }
+        await createNotification(ride.postedByUserId, 'ride_completed', 'Ride complete', message, ride.id);
+      }
+    } catch {
+      // Ignore notification failures.
+    }
+  }
+
+  return null;
 }
 
 export async function cancelRide(rideId: string): Promise<string | null> {
   const { listBookingsForRide, updateBookingStatus } = await import('./bookings');
   const bookings = await listBookingsForRide(rideId);
+
+  // Passengers whose active bookings are being cancelled (notify them after).
+  const affectedPassengerIds: string[] = [];
   for (const booking of bookings) {
     if (booking.status === 'pending' || booking.status === 'confirmed') {
       const err = await updateBookingStatus(booking.id, 'cancelled');
       if (err) return err;
+      affectedPassengerIds.push(booking.passengerId);
     }
   }
-  return updateRideStatus(rideId, 'cancelled');
+
+  const statusErr = await updateRideStatus(rideId, 'cancelled');
+  if (statusErr) return statusErr;
+
+  // Notify each affected passenger that the ride was cancelled (best-effort).
+  try {
+    const ride = await getRide(rideId);
+    if (ride) {
+      const message = `Your ${ride.fromShort} → ${ride.toShort} ride on ${formatDepartDate(ride.departAtISO)} has been cancelled by the driver`;
+      for (const passengerId of [...new Set(affectedPassengerIds)]) {
+        await createNotification(passengerId, 'ride_cancelled', 'Ride cancelled', message, ride.id);
+      }
+    }
+  } catch {
+    // Ignore notification failures.
+  }
+
+  return null;
 }
 
 /**
@@ -208,8 +261,6 @@ export async function searchRides(fromQuery: string, toQuery: string): Promise<R
   }
   const { data, error } = await query.order('depart_at', { ascending: true });
 
-  console.log('[Search] query from:', fromQuery, 'to:', toQuery);
-  console.log('[Search] results:', data?.length, 'error:', error?.message);
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(rowToRide);

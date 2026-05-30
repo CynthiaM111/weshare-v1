@@ -27,6 +27,8 @@ const MAPPING = {
   'person.crop.circle': 'account-circle',
   'gearshape.fill': 'settings',
   'circle.grid.2x2.fill': 'apps',
+  'bell.fill': 'notifications',
+  bell: 'notifications-none',
 } as IconMapping;
 
 /**

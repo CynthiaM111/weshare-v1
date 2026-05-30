@@ -17,6 +17,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
 import { passengerDisplayName } from '@/lib/auth/users';
 import {
+  declineBooking,
   listBookingsForRideWithPassengers,
   updateBookingStatus,
   type Booking,
@@ -103,6 +104,17 @@ export default function RideDetailScreen() {
     setActionId(null);
     if (!err) {
       setBookings(prev => prev.map(b => (b.id === bookingId ? { ...b, status } : b)));
+    }
+  }
+
+  async function onDeclineBooking(bookingId: string, rideId: string) {
+    setActionId(bookingId);
+    const err = await declineBooking(bookingId, rideId);
+    setActionId(null);
+    if (!err) {
+      setBookings(prev =>
+        prev.map(b => (b.id === bookingId ? { ...b, status: 'cancelled' } : b))
+      );
     }
   }
 
@@ -297,7 +309,7 @@ export default function RideDetailScreen() {
                       <ThemedText style={styles.actionBtnText}>Confirm</ThemedText>
                     </Pressable>
                     <Pressable
-                      onPress={() => onBookingAction(b.id, 'cancelled')}
+                      onPress={() => onDeclineBooking(b.id, b.rideId)}
                       disabled={busy}
                       style={[styles.declineBtn, { opacity: busy ? 0.6 : 1 }]}
                     >

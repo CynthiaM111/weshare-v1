@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "WeShare uses your location to set your pickup point and help you choose destinations in Rwanda."
+        "NSLocationWhenInUseUsageDescription": "WeShare uses your location to set pickup points, verify ride start and completion, and help you choose destinations in Rwanda."
       },
       "bundleIdentifier": "com.weshare.app",
       "config": {
@@ -56,7 +56,13 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "WeShare uses your location to verify ride start and completion near pickup and drop-off points."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -44,3 +44,7 @@ apps/web/storage/
 # Expo
 apps/mobile/.expo/
 apps/mobile/dist/
+
+# Supabase CLI local state
+supabase/.temp/
+apps/mobile/weshare/supabase/

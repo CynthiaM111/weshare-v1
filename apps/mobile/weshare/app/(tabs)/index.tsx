@@ -35,6 +35,8 @@ import {
 } from '@/lib/places';
 import { searchRides, type Ride } from '@/lib/rides';
 
+
+
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -95,6 +97,7 @@ export default function FindRideScreen() {
             toValue, useNativeDriver: false, tension: 68, friction: 12,
         }).start();
     }
+    
 
     // ── Place state ───────────────────────────────────────────
     // Each field has: display text + whether a GPS pick has been confirmed
@@ -326,6 +329,7 @@ export default function FindRideScreen() {
     const inputBg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(8,17,31,0.05)';
 
     const activeSugs = editing === 'from' ? fromSugs : toSugs;
+    
 
     return (
         <View style={styles.root}>

@@ -32,10 +32,12 @@ import { supabase } from './supabase';
 
 export type NotificationType =
   | 'new_booking'
+  | 'payment_received'
   | 'booking_pending'
   | 'booking_confirmed'
   | 'booking_cancelled'
   | 'ride_cancelled'
+  | 'ride_started'
   | 'ride_completed';
 
 export type Notification = {

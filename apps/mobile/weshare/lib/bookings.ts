@@ -1,6 +1,6 @@
 import { getProfile, getProfiles, passengerDisplayName, profileFromRow, type UserProfile } from './auth/users';
 import { createNotification } from './notifications';
-import { getRide, type Ride } from './rides';
+import { getRide, rideFromRow, type Ride } from './rides';
 import { supabase } from './supabase';
 
 function formatDepartDate(iso: string): string {
@@ -20,7 +20,7 @@ export type Booking = {
   rideId: string;
   passengerId: string;
   seats: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'confirmed' | 'started' | 'cancelled' | 'completed';
   createdAtISO: string;
 };
 
@@ -35,12 +35,15 @@ function rowToBooking(row: any): Booking {
   };
 }
 
+/** Bookings that hold a seat (confirmed or in-progress on a started ride). */
+const BOOKED_STATUSES = ['confirmed', 'started'] as const;
+
 export async function getConfirmedSeatsForRide(rideId: string): Promise<number> {
   const { data, error } = await supabase
     .from('bookings')
     .select('seats')
     .eq('ride_id', rideId)
-    .eq('status', 'confirmed');
+    .in('status', [...BOOKED_STATUSES]);
 
   if (error) throw new Error(error.message);
   return (data ?? []).reduce((sum, row) => sum + row.seats, 0);
@@ -135,14 +138,42 @@ export async function listMyBookings(passengerId: string): Promise<Booking[]> {
 export type BookingWithRide = Booking & { ride: Ride | null };
 
 export async function listMyBookingsWithRides(passengerId: string): Promise<BookingWithRide[]> {
-  const bookings = await listMyBookings(passengerId);
-  if (bookings.length === 0) return [];
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(
+      `
+      *,
+      rides (*)
+    `
+    )
+    .eq('passenger_id', passengerId)
+    .order('created_at', { ascending: false });
 
-  const rideIds = [...new Set(bookings.map(b => b.rideId))];
-  const rides = await Promise.all(rideIds.map(id => getRide(id)));
-  const rideById = Object.fromEntries(rideIds.map((id, i) => [id, rides[i]])) as Record<string, Ride | null>;
+  if (error) throw new Error(error.message);
+  if (!data?.length) return [];
 
-  return bookings.map(b => ({ ...b, ride: rideById[b.rideId] ?? null }));
+  let results = data.map((row: Record<string, unknown>) => {
+    const embedded = row.rides;
+    const rideRow = Array.isArray(embedded) ? embedded[0] : embedded;
+    const ride =
+      rideRow && typeof rideRow === 'object'
+        ? rideFromRow(rideRow as Record<string, unknown>)
+        : null;
+
+    return { ...rowToBooking(row), ride };
+  });
+
+  if (results.some(b => !b.ride)) {
+    const missingIds = [...new Set(results.filter(b => !b.ride).map(b => b.rideId))];
+    const rides = await Promise.all(missingIds.map(id => getRide(id)));
+    const rideById = Object.fromEntries(missingIds.map((id, i) => [id, rides[i]])) as Record<
+      string,
+      Ride | null
+    >;
+    results = results.map(b => ({ ...b, ride: b.ride ?? rideById[b.rideId] ?? null }));
+  }
+
+  return results;
 }
 
 export async function listBookingsForRide(rideId: string): Promise<Booking[]> {
@@ -226,6 +257,31 @@ export async function countActiveBookingsForRides(rideIds: string[]): Promise<Re
     counts[row.ride_id] = (counts[row.ride_id] ?? 0) + 1;
   }
   return counts;
+}
+
+/**
+ * Aligns passenger bookings with ride lifecycle (after ride row is updated).
+ * started: confirmed → started. completed: confirmed|started → completed.
+ */
+export async function syncBookingsForRideStatus(
+  rideId: string,
+  rideStatus: 'started' | 'completed'
+): Promise<string | null> {
+  if (rideStatus === 'started') {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'started' })
+      .eq('ride_id', rideId)
+      .eq('status', 'confirmed');
+    return error?.message ?? null;
+  }
+
+  const { error } = await supabase
+    .from('bookings')
+    .update({ status: 'completed' })
+    .eq('ride_id', rideId)
+    .in('status', ['confirmed', 'started']);
+  return error?.message ?? null;
 }
 
 export async function updateBookingStatus(

@@ -39,6 +39,7 @@ type IconConfig = { icon: string; color: string };
 
 const TYPE_CONFIG: Record<string, IconConfig> = {
   new_booking: { icon: 'person.crop.circle.badge.plus', color: ACCENT },
+  payment_received: { icon: 'plus.circle.fill', color: TEAL },
   booking_pending: { icon: 'clock.fill', color: GOLD },
   booking_confirmed: { icon: 'checkmark.circle.fill', color: TEAL },
   booking_cancelled: { icon: 'xmark.circle.fill', color: RED },
@@ -148,8 +149,15 @@ function NotificationsList({
         break;
 
       case 'booking_pending':
-        // Passenger taps → go to My Bookings to see pending status
-        router.push('/my-bookings' as any);
+        if (n.bookingId) {
+          router.push({ pathname: '/my-bookings', params: { expandBookingId: n.bookingId } } as any);
+        } else {
+          router.push('/my-bookings' as any);
+        }
+        break;
+
+      case 'payment_received':
+        if (n.rideId) router.push(`/rides/${n.rideId}` as any);
         break;
 
       case 'booking_confirmed':

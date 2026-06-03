@@ -1,0 +1,3 @@
+# PawaPay calls this URL directly — no Supabase JWT.
+[functions.pawapay-webhook]
+verify_jwt = false

@@ -16,5 +16,8 @@
     "db:seed": "npm run db:seed -w web",
     "db:generate": "npm run db:generate -w web",
     "db:promote-super-admin": "npm run db:promote-super-admin -w web"
+  },
+  "devDependencies": {
+    "supabase": "^2.102.0"
   }
 }

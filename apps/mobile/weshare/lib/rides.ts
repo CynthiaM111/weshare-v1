@@ -22,11 +22,11 @@ export type Ride = {
   seats: number;
   priceRwf: number;
   note?: string;
-  status: 'active' | 'completed' | 'cancelled';
+  status: 'active' | 'started' | 'completed' | 'cancelled';
   createdAtISO: string;
 };
 
-function rowToRide(row: any): Ride {
+export function rideFromRow(row: any): Ride {
   return {
     id: row.id,
     postedByUserId: row.posted_by,
@@ -52,7 +52,7 @@ async function getFullyBookedRideIds(): Promise<string[]> {
   const { data: bookings, error: bookingsError } = await supabase
     .from('bookings')
     .select('ride_id, seats')
-    .eq('status', 'confirmed');
+    .in('status', ['confirmed', 'started']);
 
   if (bookingsError) throw new Error(bookingsError.message);
   if (!bookings?.length) return [];
@@ -89,7 +89,7 @@ export async function listRides(): Promise<Ride[]> {
   const { data, error } = await query.order('depart_at', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rowToRide);
+  return (data ?? []).map(rideFromRow);
 }
 
 /** Removes all rows from `rides` (e.g. clearing local/sample data). Requires appropriate RLS/policy. */
@@ -106,7 +106,7 @@ export async function getRide(id: string): Promise<Ride | null> {
     .single();
 
   if (error || !data) return null;
-  return rowToRide(data);
+  return rideFromRow(data);
 }
 
 export async function listMyRides(userId: string): Promise<Ride[]> {
@@ -117,7 +117,7 @@ export async function listMyRides(userId: string): Promise<Ride[]> {
     .order('depart_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rowToRide);
+  return (data ?? []).map(rideFromRow);
 }
 
 export async function createRide(
@@ -146,12 +146,12 @@ export async function createRide(
     .single();
 
   if (error) throw new Error(error.message);
-  return rowToRide(data);
+  return rideFromRow(data);
 }
 
 export async function updateRideStatus(
   rideId: string,
-  status: 'active' | 'completed' | 'cancelled'
+  status: 'active' | 'started' | 'completed' | 'cancelled' | 'paid_out'
 ): Promise<string | null> {
   const { error } = await supabase
     .from('rides')
@@ -159,20 +159,22 @@ export async function updateRideStatus(
     .eq('id', rideId);
   if (error) return error.message;
 
-  // On completion, thank the driver and every confirmed passenger (best-effort).
   if (status === 'completed') {
+    const { syncBookingsForRideStatus, listBookingsForRide } = await import('./bookings');
+    const syncErr = await syncBookingsForRideStatus(rideId, 'completed');
+    if (syncErr) return syncErr;
+
     try {
       const ride = await getRide(rideId);
       if (ride) {
-        const { listBookingsForRide } = await import('./bookings');
         const bookings = await listBookingsForRide(rideId);
         const message = `Your ride from ${ride.fromShort} to ${ride.toShort} is complete. Thanks for riding with WeShare!`;
-        const confirmedPassengerIds = [
+        const passengerIds = [
           ...new Set(
-            bookings.filter(b => b.status === 'confirmed').map(b => b.passengerId)
+            bookings.filter(b => b.status === 'completed').map(b => b.passengerId)
           ),
         ];
-        for (const passengerId of confirmedPassengerIds) {
+        for (const passengerId of passengerIds) {
           await createNotification(passengerId, 'ride_completed', 'Ride complete', message, ride.id);
         }
         await createNotification(ride.postedByUserId, 'ride_completed', 'Ride complete', message, ride.id);
@@ -185,6 +187,27 @@ export async function updateRideStatus(
   return null;
 }
 
+/** Marks a ride as started and records the driver's start location. */
+export async function startRide(
+  rideId: string,
+  startLat: number,
+  startLng: number
+): Promise<string | null> {
+  const { error } = await supabase
+    .from('rides')
+    .update({
+      status: 'started',
+      started_at: new Date().toISOString(),
+      driver_start_lat: startLat,
+      driver_start_lng: startLng,
+    })
+    .eq('id', rideId);
+  if (error) return error.message;
+
+  const { syncBookingsForRideStatus } = await import('./bookings');
+  return syncBookingsForRideStatus(rideId, 'started');
+}
+
 export async function cancelRide(rideId: string): Promise<string | null> {
   const { listBookingsForRide, updateBookingStatus } = await import('./bookings');
   const bookings = await listBookingsForRide(rideId);
@@ -192,7 +215,7 @@ export async function cancelRide(rideId: string): Promise<string | null> {
   // Passengers whose active bookings are being cancelled (notify them after).
   const affectedPassengerIds: string[] = [];
   for (const booking of bookings) {
-    if (booking.status === 'pending' || booking.status === 'confirmed') {
+    if (booking.status === 'pending' || booking.status === 'confirmed' || booking.status === 'started') {
       const err = await updateBookingStatus(booking.id, 'cancelled');
       if (err) return err;
       affectedPassengerIds.push(booking.passengerId);
@@ -263,5 +286,5 @@ export async function searchRides(fromQuery: string, toQuery: string): Promise<R
 
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rowToRide);
+  return (data ?? []).map(rideFromRow);
 }

@@ -14,9 +14,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { HeaderIconAction, TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AuthGate } from '@/components/ui/AuthGate';
@@ -76,14 +79,14 @@ export default function MyBookingsScreen() {
 
   if (!session) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <AuthGate
           icon="ticket"
           title="Bookings"
           description="Sign in to see rides you've booked as a passenger."
           redirectPath="/my-bookings"
         />
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
@@ -184,16 +187,21 @@ function MyBookingsList({
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
-        <ThemedText style={[styles.headerTitle, { color: textPri }]}>Bookings</ThemedText>
-        <Pressable onPress={() => router.push('/' as any)} style={styles.findBtn}>
-          <LinearGradient colors={[TEAL, '#00A896']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.findBtnGrad}>
-            <IconSymbol name="magnifyingglass" size={14} color="#fff" />
-            <ThemedText style={styles.findBtnText}>Find ride</ThemedText>
-          </LinearGradient>
-        </Pressable>
-      </View>
+    <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
+      <TabScreenHeader
+        title="Bookings"
+        textPri={textPri}
+        hair={hair}
+        cardBg={cardBg}
+        action={
+          <HeaderIconAction
+            onPress={() => router.push('/' as any)}
+            colors={[TEAL, '#00A896']}
+            icon="magnifyingglass"
+            accessibilityLabel="Find a ride"
+          />
+        }
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -239,7 +247,7 @@ function MyBookingsList({
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 
@@ -391,18 +399,6 @@ function BookingCard({
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '900' },
-  findBtn: { borderRadius: 10, overflow: 'hidden' },
-  findBtnGrad: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7 },
-  findBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
   scroll: { padding: 16, paddingTop: 12 },
   summaryWrap: { gap: 8, marginBottom: 14 },
   summaryTitle: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },

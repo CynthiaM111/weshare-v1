@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -24,10 +24,10 @@ export default function BookingPendingRedirect() {
   }, [params.bookingId, router]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bg }}>
+    <ScreenSafeArea backgroundColor={bg}>
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color={ACCENT} size="large" />
       </View>
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }

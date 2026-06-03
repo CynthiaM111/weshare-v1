@@ -20,7 +20,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
+import { screenHeaderPaddingTop } from '@/components/TabScreenHeader';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -148,16 +151,16 @@ export default function EditRideScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <View style={styles.center}><ActivityIndicator color={ACCENT} size="large" /></View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   if (unavailable) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
-        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
+        <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
           <Pressable onPress={() => router.back()} style={styles.headerBack}>
             <IconSymbol name="arrow.left" size={16} color={textPri} />
             <ThemedText style={[styles.headerBackText, { color: textPri }]}>Back</ThemedText>
@@ -177,15 +180,15 @@ export default function EditRideScreen() {
             </Pressable>
           </View>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+    <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
+        <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
           <Pressable onPress={() => router.back()} style={styles.headerBack}>
             <IconSymbol name="arrow.left" size={16} color={textPri} />
             <ThemedText style={[styles.headerBackText, { color: textPri }]}>Back</ThemedText>
@@ -343,7 +346,7 @@ export default function EditRideScreen() {
           </Modal>
         )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 

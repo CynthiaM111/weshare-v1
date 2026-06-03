@@ -2,7 +2,9 @@ import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Radius, Shadow } from '@/constants/theme';
@@ -50,7 +52,7 @@ export default function ProfileScreen() {
 
   if (!session) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+      <ScreenSafeArea backgroundColor={c.background}>
         <View style={styles.center}>
           <ThemedText style={[styles.title, { color: c.text }]}>Profile</ThemedText>
           <ThemedText style={[styles.sub, { color: c.subText }]}>Login to view your profile</ThemedText>
@@ -58,12 +60,12 @@ export default function ProfileScreen() {
             <ThemedText style={styles.btnText}>Login</ThemedText>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+    <ScreenSafeArea backgroundColor={c.background}>
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
@@ -125,7 +127,7 @@ export default function ProfileScreen() {
           <ThemedText style={styles.logoutText}>Logout</ThemedText>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 

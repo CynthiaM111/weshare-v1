@@ -9,7 +9,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
+import { screenHeaderPaddingTop } from '@/components/TabScreenHeader';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -234,24 +237,24 @@ export default function ConfirmBookingScreen() {
 
   if (sessionLoading || loadingRide || !session) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <View style={styles.center}>
           <ActivityIndicator color={ACCENT} size="large" />
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   if (!ride) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <View style={styles.center}>
           <ThemedText style={[styles.title, { color: textPri }]}>Ride not found</ThemedText>
           <Pressable onPress={() => router.back()} style={[styles.outlineBtn, { borderColor: hair }]}>
             <ThemedText style={[styles.outlineBtnText, { color: textPri }]}>Go back</ThemedText>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
@@ -265,7 +268,7 @@ export default function ConfirmBookingScreen() {
   const phoneValid = localPhone.replace(/\D/g, '').length === 9;
 
   const header = (
-    <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
+    <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
       <Pressable onPress={() => router.back()} hitSlop={12} disabled={payPhase === 'polling'}>
         <IconSymbol name="chevron.left" size={20} color={ACCENT} />
       </Pressable>
@@ -276,7 +279,7 @@ export default function ConfirmBookingScreen() {
 
   if (payPhase === 'polling') {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
         <View style={styles.center}>
           <ActivityIndicator color={ACCENT} size="large" />
@@ -290,13 +293,13 @@ export default function ConfirmBookingScreen() {
             This may take up to 30 seconds
           </ThemedText>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   if (payPhase === 'success') {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
         <View style={styles.center}>
           <IconSymbol name="checkmark.circle.fill" size={64} color={TEAL} />
@@ -305,13 +308,13 @@ export default function ConfirmBookingScreen() {
             Waiting for the driver to confirm your booking
           </ThemedText>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   if (payPhase === 'failed') {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
         <View style={styles.center}>
           <IconSymbol name="xmark.circle.fill" size={64} color="#EF4444" />
@@ -323,13 +326,13 @@ export default function ConfirmBookingScreen() {
             <ThemedText style={[styles.outlineBtnText, { color: textPri }]}>Try again</ThemedText>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   if (payPhase === 'timeout') {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
         <View style={styles.center}>
           <ThemedText style={[styles.waitTitle, { color: textPri, textAlign: 'center', paddingHorizontal: 24 }]}>
@@ -349,12 +352,12 @@ export default function ConfirmBookingScreen() {
             </LinearGradient>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+    <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
       {header}
 
       <ScrollView
@@ -506,7 +509,7 @@ export default function ConfirmBookingScreen() {
           </LinearGradient>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 

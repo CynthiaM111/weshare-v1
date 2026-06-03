@@ -13,8 +13,10 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
+import { screenHeaderPaddingTop } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AuthGate } from '@/components/ui/AuthGate';
@@ -78,17 +80,18 @@ export default function NotificationsScreen() {
   const { session } = useSession();
 
   const bg = isDark ? NAVY : '#F5F7FA';
+  const cardBg = isDark ? NAVY_2 : '#FFF';
 
   if (!session) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <AuthGate
           icon="bell.fill"
           title="Notifications"
           description="Sign in to get updates about your bookings and rides."
           redirectPath="/notifications"
         />
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
@@ -210,8 +213,8 @@ function NotificationsList({
   const unreadCount = items.filter(it => !it.read).length;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
+    <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
+      <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
         <ThemedText style={[styles.headerTitle, { color: textPri }]}>Notifications</ThemedText>
         {unreadCount > 0 && (
           <Pressable onPress={onMarkAll} hitSlop={8}>
@@ -279,7 +282,7 @@ function NotificationsList({
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 

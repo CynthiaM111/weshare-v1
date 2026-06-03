@@ -13,9 +13,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { HeaderIconAction, TabScreenHeader } from '@/components/TabScreenHeader';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AuthGate } from '@/components/ui/AuthGate';
@@ -40,7 +43,7 @@ function statusColorAlpha(hex: string) {
   return `${hex}26`;
 }
 
-function formatDepart(d: Date) {
+function formatDepartShort(d: Date) {
   return d.toLocaleString(undefined, {
     weekday: 'short',
     month: 'short',
@@ -49,6 +52,14 @@ function formatDepart(d: Date) {
     minute: '2-digit',
     hour12: false,
   });
+}
+
+function formatDepartDate(d: Date) {
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function formatDepartTime(d: Date) {
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export default function MyRidesScreen() {
@@ -67,14 +78,14 @@ export default function MyRidesScreen() {
 
   if (!session) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <AuthGate
           icon="list.bullet.rectangle"
           title="My Rides"
           description="Sign in to see and manage the rides you've posted as a driver."
           redirectPath="/my-rides"
         />
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
@@ -161,16 +172,21 @@ function MyRidesList({
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
-        <ThemedText style={[styles.headerTitle, { color: textPri }]}>My Rides</ThemedText>
-        <Pressable onPress={() => router.push('/post-ride' as any)} style={styles.newBtn}>
-          <LinearGradient colors={[ACCENT, '#FF4500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.newBtnGrad}>
-            <IconSymbol name="plus" size={14} color="#fff" />
-            <ThemedText style={styles.newBtnText}>New ride</ThemedText>
-          </LinearGradient>
-        </Pressable>
-      </View>
+    <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
+      <TabScreenHeader
+        title="My Rides"
+        textPri={textPri}
+        hair={hair}
+        cardBg={cardBg}
+        action={
+          <HeaderIconAction
+            onPress={() => router.push('/post-ride' as any)}
+            colors={[ACCENT, '#FF4500']}
+            icon="plus"
+            accessibilityLabel="Post new ride"
+          />
+        }
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -220,7 +236,7 @@ function MyRidesList({
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 
@@ -282,37 +298,48 @@ function MyRideCard({
   cardBg: string;
 }) {
   const depart = new Date(r.departAtISO);
+  const hasDepart = !Number.isNaN(depart.getTime());
   const stripColor = STRIP_COLOR[r.status] ?? STRIP_COLOR.active;
 
   return (
-    <Pressable
-      onPress={onToggle}
-      style={[styles.rideCard, { backgroundColor: cardBg, borderColor: hair }]}
-    >
+    <View style={[styles.rideCard, { backgroundColor: cardBg, borderColor: hair }]}>
       <View style={[styles.topStrip, { backgroundColor: stripColor }]} />
 
-      <View style={styles.cardBody}>
+      <Pressable onPress={onToggle} style={styles.cardBody}>
         <View style={styles.routeRow}>
-          <View style={[styles.routeTextWrap, expanded && styles.routeTextWrapExpanded]}>
+          <View style={styles.routeCol}>
             {expanded ? (
               <>
-                <ThemedText style={[styles.routeFrom, { color: textPri }]}>{r.fromShort}</ThemedText>
-                <ThemedText style={[styles.routeArrow, { color: textSub }]}>→</ThemedText>
-                <ThemedText style={[styles.routeTo, { color: textPri }]}>{r.toShort}</ThemedText>
-              </>
-            ) : (
-              <>
-                <ThemedText style={[styles.routeFrom, { color: textPri }]} numberOfLines={1}>
+                <ThemedText style={[styles.routePlace, { color: textPri }]} numberOfLines={1} ellipsizeMode="tail">
                   {r.fromShort}
                 </ThemedText>
-                <ThemedText style={[styles.routeArrow, { color: textSub }]}> → </ThemedText>
-                <ThemedText style={[styles.routeTo, { color: textPri }]} numberOfLines={1}>
+                <View style={styles.routeArrowRow}>
+                  <IconSymbol name="arrow.forward" size={13} color={textSub} />
+                </View>
+                <ThemedText style={[styles.routePlace, { color: textPri }]} numberOfLines={1} ellipsizeMode="tail">
                   {r.toShort}
                 </ThemedText>
               </>
+            ) : (
+              <View style={styles.routeInlineRow}>
+                <ThemedText
+                  style={[styles.routePlace, styles.routePlaceShrink, { color: textPri }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {r.fromShort}
+                </ThemedText>
+                <IconSymbol name="arrow.forward" size={13} color={textSub} style={styles.routeArrowIcon} />
+                <ThemedText
+                  style={[styles.routePlace, styles.routePlaceShrink, { color: textPri }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {r.toShort}
+                </ThemedText>
+              </View>
             )}
           </View>
-
           <View style={styles.routeRight}>
             <View style={[styles.statusPill, { backgroundColor: statusColorAlpha(stripColor) }]}>
               <ThemedText style={[styles.statusPillText, { color: stripColor }]}>{r.status}</ThemedText>
@@ -328,113 +355,106 @@ function MyRideCard({
           </View>
         </View>
 
-        {!Number.isNaN(depart.getTime()) && (
+        {!expanded && hasDepart ? (
           <View style={styles.timeRow}>
             <IconSymbol name="clock.fill" size={12} color={textSub} />
-            <ThemedText style={[styles.timeText, { color: textSub }]}>
-              {formatDepart(depart)}
+            <ThemedText style={[styles.timeText, { color: textSub }]} numberOfLines={1}>
+              {formatDepartShort(depart)}
             </ThemedText>
           </View>
-        )}
+        ) : null}
+      </Pressable>
 
-        {expanded && (
-          <View style={[styles.expandedBlock, { borderTopColor: hair }]}>
-            <View style={styles.detailRow}>
-              <View style={[styles.detailChip, { backgroundColor: inputBg }]}>
-                <IconSymbol name="person.2.fill" size={11} color={textSub} />
-                <ThemedText style={[styles.detailChipText, { color: textSub }]}>
-                  {r.seats} seats
-                </ThemedText>
+      {expanded ? (
+        <View style={[styles.expandedBlock, { borderTopColor: hair }]}>
+          {hasDepart ? (
+            <View style={styles.factsBlock}>
+              <View style={styles.departRow}>
+                <ThemedText style={[styles.departDate, { color: textPri }]}>{formatDepartDate(depart)}</ThemedText>
+                <ThemedText style={[styles.departTime, { color: stripColor }]}>{formatDepartTime(depart)}</ThemedText>
               </View>
-              <View style={[styles.detailChip, { backgroundColor: inputBg }]}>
-                <ThemedText style={[styles.detailChipText, { color: textSub }]}>
-                  RWF {r.priceRwf.toLocaleString()} / seat
-                </ThemedText>
-              </View>
-              {bookingCount > 0 && (
-                <View style={[styles.detailChip, { backgroundColor: inputBg }]}>
-                  <ThemedText style={[styles.detailChipText, { color: textSub }]}>
-                    {bookingCount} booking{bookingCount === 1 ? '' : 's'}
-                  </ThemedText>
+              <View style={[styles.factsRow, { backgroundColor: inputBg }]}>
+                <View style={styles.factItem}>
+                  <ThemedText style={[styles.factValue, { color: textPri }]}>{r.seats}</ThemedText>
+                  <ThemedText style={[styles.factLabel, { color: textSub }]}>seats</ThemedText>
                 </View>
-              )}
-            </View>
-
-            {r.note ? (
-              <View style={[styles.noteBox, { backgroundColor: inputBg }]}>
-                <ThemedText style={[styles.noteText, { color: textSub }]}>{r.note}</ThemedText>
+                <View style={[styles.factDivider, { backgroundColor: hair }]} />
+                <View style={[styles.factItem, styles.factItemWide]}>
+                  <ThemedText style={[styles.factValue, { color: textPri }]} numberOfLines={1}>
+                    {r.priceRwf.toLocaleString()}
+                  </ThemedText>
+                  <ThemedText style={[styles.factLabel, { color: textSub }]}>RWF / seat</ThemedText>
+                </View>
+                <View style={[styles.factDivider, { backgroundColor: hair }]} />
+                <View style={styles.factItem}>
+                  <ThemedText
+                    style={[
+                      styles.factValue,
+                      { color: bookingCount > 0 ? stripColor : textPri },
+                    ]}
+                  >
+                    {bookingCount}
+                  </ThemedText>
+                  <ThemedText style={[styles.factLabel, { color: textSub }]}>booked</ThemedText>
+                </View>
               </View>
-            ) : null}
+            </View>
+          ) : null}
 
-            <View style={styles.actionsRow}>
+          {r.note ? (
+            <ThemedText style={[styles.noteText, { color: textSub }]} numberOfLines={3}>
+              {r.note}
+            </ThemedText>
+          ) : null}
+
+          <View style={styles.actionsRow}>
+            <Pressable
+              onPress={() => router.push(`/rides/${r.id}` as any)}
+              style={[styles.actionBtn, styles.actionBtnPrimary, { backgroundColor: stripColor }]}
+            >
+              <ThemedText style={styles.actionBtnPrimaryText}>View Bookings</ThemedText>
+            </Pressable>
+            {r.status === 'active' && bookingCount === 0 && (
               <Pressable
-                onPress={() => router.push(`/rides/${r.id}` as any)}
+                onPress={() => router.push(`/edit-ride/${r.id}` as any)}
                 style={[styles.actionBtn, { backgroundColor: inputBg }]}
               >
-                <IconSymbol name="person.2.fill" size={13} color={textSub} />
-                <ThemedText style={[styles.actionText, { color: textPri }]} numberOfLines={1}>
-                  View Bookings
-                </ThemedText>
+                <ThemedText style={[styles.actionText, { color: textPri }]}>Edit</ThemedText>
               </Pressable>
-              {r.status === 'active' && bookingCount === 0 && (
-                <Pressable
-                  onPress={() => router.push(`/edit-ride/${r.id}` as any)}
-                  style={[styles.actionBtn, { backgroundColor: inputBg }]}
-                >
-                  <IconSymbol name="pencil" size={13} color={textSub} />
-                  <ThemedText style={[styles.actionText, { color: textPri }]} numberOfLines={1}>
-                    Edit
+            )}
+            {r.status === 'active' &&
+              (cancelConfirmId === r.id ? (
+                <View style={styles.cancelConfirmBox}>
+                  <ThemedText style={styles.cancelConfirmText}>
+                    Cancels all passenger bookings
                   </ThemedText>
-                </Pressable>
-              )}
-              {r.status === 'active' &&
-                (cancelConfirmId === r.id ? (
-                  <View style={styles.cancelConfirmBox}>
-                    <ThemedText style={styles.cancelConfirmText}>
-                      This will cancel all passenger bookings
-                    </ThemedText>
-                    <View style={styles.cancelConfirmActions}>
-                      <Pressable onPress={() => onCancelRide(r.id)} style={styles.cancelConfirmYes}>
-                        <ThemedText style={styles.cancelConfirmYesText}>Yes, cancel ride</ThemedText>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => onCancelConfirm(null)}
-                        style={[styles.actionBtn, { flex: 1, backgroundColor: inputBg }]}
-                      >
-                        <ThemedText style={[styles.actionText, { color: textPri }]} numberOfLines={1}>
-                          Never mind
-                        </ThemedText>
-                      </Pressable>
-                    </View>
+                  <View style={styles.cancelConfirmActions}>
+                    <Pressable onPress={() => onCancelRide(r.id)} style={styles.cancelConfirmYes}>
+                      <ThemedText style={styles.cancelConfirmYesText}>Confirm</ThemedText>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => onCancelConfirm(null)}
+                      style={[styles.actionBtn, { flex: 1, backgroundColor: inputBg }]}
+                    >
+                      <ThemedText style={[styles.actionText, { color: textPri }]}>Back</ThemedText>
+                    </Pressable>
                   </View>
-                ) : (
-                  <Pressable onPress={() => onCancelConfirm(r.id)} style={styles.cancelBtn}>
-                    <ThemedText style={styles.cancelBtnText}>Cancel ride</ThemedText>
-                  </Pressable>
-                ))}
-            </View>
+                </View>
+              ) : (
+                <Pressable onPress={() => onCancelConfirm(r.id)} style={styles.cancelBtn}>
+                  <ThemedText style={styles.cancelBtnText}>Cancel</ThemedText>
+                </Pressable>
+              ))}
           </View>
-        )}
-      </View>
-    </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '900' },
-  newBtn: { borderRadius: 10, overflow: 'hidden' },
-  newBtnGrad: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7 },
-  newBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
   scroll: { padding: 16, paddingTop: 12 },
   summaryRow: { fontSize: 13, fontWeight: '700', marginBottom: 14, lineHeight: 18 },
   summaryDot: { fontSize: 13, fontWeight: '700' },
@@ -452,51 +472,55 @@ const styles = StyleSheet.create({
   },
   topStrip: { height: 3, width: '100%' },
   cardBody: { padding: 14, gap: 8 },
-  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  routeTextWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 },
-  routeTextWrapExpanded: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
-  routeFrom: { fontWeight: '800', fontSize: 14, flexShrink: 1 },
-  routeArrow: { fontWeight: '600', fontSize: 14 },
-  routeTo: { fontWeight: '800', fontSize: 14, flexShrink: 1 },
-  routeRight: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
-  statusPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
+  routeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  routeCol: { flex: 1, minWidth: 0, gap: 2 },
+  routeInlineRow: { flexDirection: 'row', alignItems: 'center', minWidth: 0, gap: 4 },
+  routePlaceShrink: { flexShrink: 1, minWidth: 0 },
+  routeArrowRow: { paddingVertical: 1 },
+  routeArrowIcon: { flexShrink: 0 },
+  routePlace: { fontWeight: '800', fontSize: 14, lineHeight: 18 },
+  routeRight: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 2 },
+  statusPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  statusPillText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   chevronWrap: { width: 18, alignItems: 'center', justifyContent: 'center' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   timeText: { fontSize: 12, fontWeight: '600' },
-  expandedBlock: { gap: 10, paddingTop: 12, marginTop: 4, borderTopWidth: 1 },
-  detailRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  detailChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  detailChipText: { fontSize: 12, fontWeight: '700' },
-  noteBox: { borderRadius: 10, padding: 10 },
-  noteText: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  actionBtn: {
-    flex: 1,
-    minWidth: '30%',
+  expandedBlock: { gap: 10, paddingHorizontal: 14, paddingBottom: 14, paddingTop: 10, borderTopWidth: 1 },
+  factsBlock: { gap: 10 },
+  departRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' },
+  departDate: { fontSize: 15, fontWeight: '800' },
+  departTime: { fontSize: 16, fontWeight: '900' },
+  factsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    height: 36,
     borderRadius: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
   },
-  actionText: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
-  cancelBtn: {
-    width: '100%',
+  factItem: { flex: 1, alignItems: 'center', gap: 2, minWidth: 0 },
+  factItemWide: { flex: 1.4 },
+  factValue: { fontSize: 17, fontWeight: '900' },
+  factLabel: { fontSize: 11, fontWeight: '700', textTransform: 'lowercase' },
+  factDivider: { width: 1, height: 28, opacity: 0.9 },
+  noteText: { fontSize: 12, lineHeight: 17, fontWeight: '600', fontStyle: 'italic' },
+  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  actionBtn: {
+    minWidth: 108,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnPrimary: {},
+  actionBtnPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  actionText: { fontSize: 13, fontWeight: '700' },
+  cancelBtn: {
+    height: 34,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#EF444440',
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },

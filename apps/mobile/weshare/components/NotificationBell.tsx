@@ -1,11 +1,10 @@
 /**
- * NotificationBell — persistent floating bell rendered above every tab screen.
- * Navigates to /notifications and shows an unread-count badge.
+ * Notification bell — floating on most tabs; inline in headers that have a trailing CTA.
  */
 
 import { usePathname, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -13,11 +12,14 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSession } from '@/hooks/use-session';
 import { getUnreadCount } from '@/lib/notifications';
 
-export function NotificationBell() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const insets = useSafeAreaInsets();
+/** Screens that embed the bell in TabScreenHeader instead of the floating FAB. */
+export function usesEmbeddedHeaderBell(pathname: string): boolean {
+  return pathname.includes('my-rides') || pathname.includes('my-bookings');
+}
+
+export function useNotificationUnread() {
   const { session } = useSession();
+  const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const refresh = useCallback(async () => {
@@ -32,7 +34,6 @@ export function NotificationBell() {
     }
   }, [session?.userId]);
 
-  // Refresh on mount, whenever the route changes, and on app foreground.
   useEffect(() => {
     void refresh();
   }, [refresh, pathname]);
@@ -44,17 +45,29 @@ export function NotificationBell() {
     return () => sub.remove();
   }, [refresh]);
 
-  // Hide for guests and on the notifications screen itself.
+  return { unreadCount, session };
+}
+
+type NotificationBellButtonProps = {
+  variant?: 'fab' | 'inline';
+  style?: ViewStyle;
+};
+
+export function NotificationBellButton({ variant = 'fab', style }: NotificationBellButtonProps) {
+  const router = useRouter();
+  const { unreadCount, session } = useNotificationUnread();
+
   if (!session) return null;
-  if (pathname === '/notifications') return null;
+
+  const isInline = variant === 'inline';
 
   return (
     <Pressable
       onPress={() => router.push('/notifications' as any)}
-      style={[styles.bellFab, { top: insets.top + 12 }]}
+      style={[isInline ? styles.bellInline : styles.bellFab, style]}
       hitSlop={8}
     >
-      <IconSymbol name="bell.fill" size={20} color="#FFFFFF" />
+      <IconSymbol name="bell.fill" size={isInline ? 18 : 20} color="#FFFFFF" />
       {unreadCount > 0 && (
         <View style={styles.bellBadge}>
           <ThemedText style={styles.bellBadgeText}>
@@ -66,11 +79,26 @@ export function NotificationBell() {
   );
 }
 
+/** Floating bell above tab content (hidden where the header embeds it). */
+export function NotificationBell() {
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  const { session } = useNotificationUnread();
+
+  if (!session) return null;
+  if (pathname === '/notifications') return null;
+  if (usesEmbeddedHeaderBell(pathname)) return null;
+
+  return (
+    <NotificationBellButton
+      variant="fab"
+      style={{ position: 'absolute', right: 16, top: insets.top + 12, zIndex: 100 }}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   bellFab: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 100,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -84,6 +112,16 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
+  },
+  bellInline: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(8,17,31,0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bellBadge: {
     position: 'absolute',

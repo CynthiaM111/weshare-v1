@@ -11,7 +11,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
+import { screenHeaderPaddingTop } from '@/components/TabScreenHeader';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -355,24 +358,24 @@ export default function RideDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <View style={styles.center}>
           <ActivityIndicator color={ACCENT} size="large" />
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
   if (!ride) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <View style={styles.center}>
           <ThemedText style={[styles.headerTitle, { color: textPri }]}>Ride not found</ThemedText>
           <Pressable onPress={() => router.replace('/my-rides' as any)} style={[styles.outlineBtn, { borderColor: hair }]}>
             <ThemedText style={[styles.outlineBtnText, { color: textPri }]}>Go back</ThemedText>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
@@ -387,8 +390,8 @@ export default function RideDetailScreen() {
   const showPayoutSavedCheck = driverPhoneSaved && !payoutPhoneDirty;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: hair, backgroundColor: cardBg }]}>
+    <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
+      <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
         <Pressable onPress={() => router.replace('/my-rides' as any)} hitSlop={12}>
           <IconSymbol name="chevron.left" size={20} color={ACCENT} />
         </Pressable>
@@ -705,7 +708,7 @@ export default function RideDetailScreen() {
           )
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 

@@ -5,8 +5,9 @@
  */
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import * as SystemUI from 'expo-system-ui';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -329,7 +330,12 @@ export default function FindRideScreen() {
     const inputBg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(8,17,31,0.05)';
 
     const activeSugs = editing === 'from' ? fromSugs : toSugs;
-    
+
+    useFocusEffect(
+        useCallback(() => {
+            void SystemUI.setBackgroundColorAsync(NAVY);
+        }, [])
+    );
 
     return (
         <View style={styles.root}>

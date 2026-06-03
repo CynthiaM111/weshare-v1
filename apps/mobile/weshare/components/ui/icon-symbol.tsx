@@ -37,6 +37,8 @@ const MAPPING = {
   'circle.grid.2x2.fill': 'apps',
   'bell.fill': 'notifications',
   bell: 'notifications-none',
+  'list.bullet.rectangle': 'format-list-bulleted',
+  'arrow.forward': 'arrow-forward',
 } as IconMapping;
 
 /**

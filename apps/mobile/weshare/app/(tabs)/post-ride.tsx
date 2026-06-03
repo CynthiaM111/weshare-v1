@@ -19,7 +19,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ScreenSafeArea } from '@/components/ScreenSafeArea';
+import { screenHeaderPaddingTop } from '@/components/TabScreenHeader';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -67,14 +70,17 @@ export default function PostRideScreen() {
   // ── Auth gate ─────────────────────────────────────────────
   if (!session) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? NAVY : '#F5F7FA' }]}>
+      <ScreenSafeArea
+        backgroundColor={isDark ? NAVY : '#F5F7FA'}
+        topBackgroundColor={cardBg}
+      >
         <AuthGate
           icon="car.fill"
           title="Post a ride"
           description="Sign in to share your route and offer seats to passengers across Rwanda."
           redirectPath="/post-ride"
         />
-      </SafeAreaView>
+      </ScreenSafeArea>
     );
   }
 
@@ -267,11 +273,14 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? NAVY : '#F5F7FA' }]}>
+    <ScreenSafeArea
+      backgroundColor={isDark ? NAVY : '#F5F7FA'}
+      topBackgroundColor={cardBg}
+    >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
         {/* Header (title centered above the step tracker) */}
-        <View style={[styles.headerWrap, { backgroundColor: cardBg, paddingTop: insets.top + 12 }]}>
+        <View style={[styles.headerWrap, { backgroundColor: cardBg, paddingTop: screenHeaderPaddingTop(insets.top) }]}>
           <ThemedText style={[styles.headerTitle, { color: textPri }]}>Post a Ride</ThemedText>
         </View>
 
@@ -576,7 +585,7 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
           </Modal>
         )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ScreenSafeArea>
   );
 }
 

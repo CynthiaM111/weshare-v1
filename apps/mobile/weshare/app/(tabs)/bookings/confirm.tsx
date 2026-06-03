@@ -25,6 +25,7 @@ import {
   getPaymentForBooking,
   initiatePayment,
 } from '@/lib/payments';
+import { formatDepartureFriendly } from '@/lib/datetime';
 import { getRide, type Ride } from '@/lib/rides';
 
 const NAVY = '#08111F';
@@ -34,17 +35,6 @@ const TEAL = '#00C9B1';
 const AIRTEL_ORANGE = '#FF9500';
 
 type PayPhase = 'form' | 'polling' | 'success' | 'failed' | 'timeout';
-
-function formatDepart(d: Date) {
-  return d.toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
 
 function stripRwandaLocal(phone: string): string {
   let p = phone.trim();
@@ -249,7 +239,7 @@ export default function ConfirmBookingScreen() {
     return (
       <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         <View style={styles.center}>
-          <ThemedText style={[styles.title, { color: textPri }]}>Ride not found</ThemedText>
+          <ThemedText style={[styles.headerTitle, { color: textPri }]}>Ride not found</ThemedText>
           <Pressable onPress={() => router.back()} style={[styles.outlineBtn, { borderColor: hair }]}>
             <ThemedText style={[styles.outlineBtnText, { color: textPri }]}>Go back</ThemedText>
           </Pressable>
@@ -269,30 +259,80 @@ export default function ConfirmBookingScreen() {
 
   const header = (
     <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
-      <Pressable onPress={() => router.back()} hitSlop={12} disabled={payPhase === 'polling'}>
-        <IconSymbol name="chevron.left" size={20} color={ACCENT} />
+      <Pressable
+        onPress={() => router.back()}
+        disabled={payPhase === 'polling'}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+        style={[
+          styles.headerBack,
+          {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : NAVY + '0C',
+            borderColor: isDark ? 'rgba(255,255,255,0.38)' : NAVY + '55',
+            opacity: payPhase === 'polling' ? 0.4 : 1,
+          },
+        ]}
+      >
+        <IconSymbol name="chevron.left" size={22} color={textPri} />
       </Pressable>
-      <ThemedText style={[styles.title, { color: textPri }]}>Confirm booking</ThemedText>
-      <View style={{ width: 20 }} />
+      <ThemedText style={[styles.headerTitle, { color: textPri }]}>Confirm booking</ThemedText>
+      <View style={styles.headerBackSpacer} />
     </View>
   );
+
+  const tripSummary = ride ? (
+    <View style={[styles.tripCard, { backgroundColor: cardBg, borderColor: hair }]}>
+      <View style={[styles.tripStrip, { backgroundColor: TEAL }]} />
+      <View style={styles.tripBody}>
+        <View style={styles.tripRouteRow}>
+          <ThemedText style={[styles.tripFrom, { color: textPri }]} numberOfLines={1}>
+            {ride.fromShort}
+          </ThemedText>
+          <IconSymbol name="arrow.forward" size={12} color={textSub} />
+          <ThemedText style={[styles.tripTo, { color: textPri }]} numberOfLines={1}>
+            {ride.toShort}
+          </ThemedText>
+        </View>
+        <View style={styles.tripMeta}>
+          <IconSymbol name="clock.fill" size={12} color={textSub} />
+          <ThemedText style={[styles.tripWhen, { color: textSub }]} numberOfLines={1}>
+            {!Number.isNaN(depart.getTime()) ? formatDepartureFriendly(depart) : ride.departAtISO}
+          </ThemedText>
+        </View>
+        <ThemedText style={[styles.tripPrice, { color: textSub }]}>
+          RWF {ride.priceRwf.toLocaleString()} per seat
+        </ThemedText>
+        {ride.note ? (
+          <View style={[styles.tripNote, { backgroundColor: inputBg }]}>
+            <ThemedText style={[styles.tripNoteText, { color: textSub }]} numberOfLines={2}>
+              {ride.note}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  ) : null;
 
   if (payPhase === 'polling') {
     return (
       <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
-        <View style={styles.center}>
-          <ActivityIndicator color={ACCENT} size="large" />
-          <ThemedText style={[styles.waitTitle, { color: textPri }]}>
-            Waiting for payment approval...
-          </ThemedText>
-          <ThemedText style={[styles.waitSub, { color: textSub }]}>
-            Check your phone for a payment prompt
-          </ThemedText>
-          <ThemedText style={[styles.waitHint, { color: textSub }]}>
-            This may take up to 30 seconds
-          </ThemedText>
-        </View>
+        <ScrollView
+          contentContainerStyle={[styles.phaseScroll, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {tripSummary}
+          <View style={[styles.phaseCard, { backgroundColor: cardBg, borderColor: hair }]}>
+            <ActivityIndicator color={ACCENT} size="large" />
+            <ThemedText style={[styles.waitTitle, { color: textPri }]}>Approve on your phone</ThemedText>
+            <ThemedText style={[styles.waitSub, { color: textSub }]}>
+              Check your mobile money app for a payment prompt, then confirm the transaction.
+            </ThemedText>
+            <ThemedText style={[styles.waitHint, { color: textSub }]}>
+              Usually takes under 30 seconds
+            </ThemedText>
+          </View>
+        </ScrollView>
       </ScreenSafeArea>
     );
   }
@@ -301,13 +341,21 @@ export default function ConfirmBookingScreen() {
     return (
       <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
-        <View style={styles.center}>
-          <IconSymbol name="checkmark.circle.fill" size={64} color={TEAL} />
-          <ThemedText style={[styles.waitTitle, { color: textPri }]}>Payment received! ✅</ThemedText>
-          <ThemedText style={[styles.waitSub, { color: textSub }]}>
-            Waiting for the driver to confirm your booking
-          </ThemedText>
-        </View>
+        <ScrollView
+          contentContainerStyle={[styles.phaseScroll, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {tripSummary}
+          <View style={[styles.phaseCard, { backgroundColor: cardBg, borderColor: TEAL + '40' }]}>
+            <View style={[styles.phaseIconWrap, { backgroundColor: TEAL + '18' }]}>
+              <IconSymbol name="checkmark.circle.fill" size={44} color={TEAL} />
+            </View>
+            <ThemedText style={[styles.waitTitle, { color: textPri }]}>Payment received</ThemedText>
+            <ThemedText style={[styles.waitSub, { color: textSub }]}>
+              Your booking is pending—the driver will confirm shortly. Taking you to My Bookings…
+            </ThemedText>
+          </View>
+        </ScrollView>
       </ScreenSafeArea>
     );
   }
@@ -316,16 +364,31 @@ export default function ConfirmBookingScreen() {
     return (
       <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
-        <View style={styles.center}>
-          <IconSymbol name="xmark.circle.fill" size={64} color="#EF4444" />
-          <ThemedText style={[styles.waitTitle, { color: textPri }]}>Payment failed</ThemedText>
-          <ThemedText style={[styles.waitSub, { color: textSub, textAlign: 'center', paddingHorizontal: 24 }]}>
-            {paymentError || 'Something went wrong. Please try again.'}
-          </ThemedText>
-          <Pressable onPress={resetToForm} style={[styles.outlineBtn, { borderColor: hair, marginTop: 8 }]}>
-            <ThemedText style={[styles.outlineBtnText, { color: textPri }]}>Try again</ThemedText>
-          </Pressable>
-        </View>
+        <ScrollView
+          contentContainerStyle={[styles.phaseScroll, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {tripSummary}
+          <View style={[styles.phaseCard, { backgroundColor: cardBg, borderColor: '#EF444440' }]}>
+            <View style={[styles.phaseIconWrap, { backgroundColor: '#EF444418' }]}>
+              <ThemedText style={styles.phaseIconEmoji}>!</ThemedText>
+            </View>
+            <ThemedText style={[styles.waitTitle, { color: textPri }]}>Payment failed</ThemedText>
+            <ThemedText style={[styles.waitSub, { color: textSub }]}>
+              {paymentError || 'Something went wrong. Please try again.'}
+            </ThemedText>
+            <Pressable onPress={resetToForm} style={styles.retryBtnWrap}>
+              <LinearGradient
+                colors={[ACCENT, '#FF4500']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.confirmGrad}
+              >
+                <ThemedText style={styles.confirmText}>Try again</ThemedText>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </ScrollView>
       </ScreenSafeArea>
     );
   }
@@ -334,24 +397,31 @@ export default function ConfirmBookingScreen() {
     return (
       <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
         {header}
-        <View style={styles.center}>
-          <ThemedText style={[styles.waitTitle, { color: textPri, textAlign: 'center', paddingHorizontal: 24 }]}>
-            Payment is taking longer than expected. Check your bookings for the status.
-          </ThemedText>
-          <Pressable
-            onPress={() => router.replace('/my-bookings')}
-            style={{ marginTop: 16, width: '100%', maxWidth: 320, paddingHorizontal: 24 }}
-          >
-            <LinearGradient
-              colors={[ACCENT, '#FF4500']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.confirmGrad}
-            >
-              <ThemedText style={styles.confirmText}>View My Bookings</ThemedText>
-            </LinearGradient>
-          </Pressable>
-        </View>
+        <ScrollView
+          contentContainerStyle={[styles.phaseScroll, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {tripSummary}
+          <View style={[styles.phaseCard, { backgroundColor: cardBg, borderColor: hair }]}>
+            <View style={[styles.phaseIconWrap, { backgroundColor: inputBg }]}>
+              <IconSymbol name="clock.fill" size={32} color={ACCENT} />
+            </View>
+            <ThemedText style={[styles.waitTitle, { color: textPri }]}>Still processing</ThemedText>
+            <ThemedText style={[styles.waitSub, { color: textSub }]}>
+              Payment is taking longer than expected. Check My Bookings for the latest status.
+            </ThemedText>
+            <Pressable onPress={() => router.replace('/my-bookings')} style={styles.retryBtnWrap}>
+              <LinearGradient
+                colors={[TEAL, '#00a896']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.confirmGrad}
+              >
+                <ThemedText style={styles.confirmText}>View my bookings</ThemedText>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </ScrollView>
       </ScreenSafeArea>
     );
   }
@@ -365,69 +435,53 @@ export default function ConfirmBookingScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.summaryCard, { backgroundColor: cardBg, borderColor: hair }]}>
-          <View style={styles.chipRow}>
-            <View style={[styles.chip, { backgroundColor: TEAL + '18' }]}>
-              <ThemedText style={[styles.chipText, { color: TEAL }]}>{ride.fromShort}</ThemedText>
-            </View>
-            <ThemedText style={[styles.arrow, { color: textSub }]}>→</ThemedText>
-            <View style={[styles.chip, { backgroundColor: ACCENT + '18' }]}>
-              <ThemedText style={[styles.chipText, { color: ACCENT }]}>{ride.toShort}</ThemedText>
-            </View>
-          </View>
+        {tripSummary}
 
-          <View style={styles.metaRow}>
-            <IconSymbol name="clock.fill" size={13} color={textSub} />
-            <ThemedText style={[styles.metaText, { color: textSub }]}>
-              {Number.isNaN(depart.getTime()) ? ride.departAtISO : formatDepart(depart)}
-            </ThemedText>
-          </View>
-
-          <ThemedText style={[styles.priceLine, { color: textPri }]}>
-            RWF {ride.priceRwf.toLocaleString()}
-            <ThemedText style={[styles.pricePer, { color: textSub }]}> / seat</ThemedText>
-          </ThemedText>
-
-          {ride.note ? (
-            <View style={[styles.noteBox, { backgroundColor: inputBg }]}>
-              <IconSymbol name="text.bubble.fill" size={12} color={textSub} />
-              <ThemedText style={[styles.noteText, { color: textSub }]}>{ride.note}</ThemedText>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={[styles.stepperCard, { backgroundColor: cardBg, borderColor: hair }]}>
-          <ThemedText style={[styles.sectionLabel, { color: textSub }]}>Number of seats</ThemedText>
+        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: hair }]}>
+          <ThemedText style={[styles.sectionTitle, { color: textPri }]}>Seats</ThemedText>
           <View style={styles.stepperRow}>
             <Pressable
               onPress={() => setSeatCount(n => Math.max(1, n - 1))}
               disabled={seatCount <= 1}
               style={[
                 styles.stepperBtn,
-                { backgroundColor: inputBg, borderColor: hair, opacity: seatCount <= 1 ? 0.4 : 1 },
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : NAVY + '0C',
+                  borderColor: isDark ? 'rgba(255,255,255,0.14)' : NAVY + '18',
+                  opacity: seatCount <= 1 ? 0.4 : 1,
+                },
               ]}
             >
               <ThemedText style={[styles.stepperBtnText, { color: textPri }]}>−</ThemedText>
             </Pressable>
-            <ThemedText style={[styles.stepperValue, { color: textPri }]}>{seatCount}</ThemedText>
+            <View style={styles.stepperCenter}>
+              <ThemedText style={[styles.stepperValue, { color: textPri }]}>{seatCount}</ThemedText>
+              <ThemedText style={[styles.stepperHint, { color: textSub }]}>
+                of {maxSeats} available
+              </ThemedText>
+            </View>
             <Pressable
               onPress={() => setSeatCount(n => Math.min(maxSeats, n + 1))}
               disabled={seatCount >= maxSeats}
               style={[
                 styles.stepperBtn,
-                { backgroundColor: inputBg, borderColor: hair, opacity: seatCount >= maxSeats ? 0.4 : 1 },
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : NAVY + '0C',
+                  borderColor: isDark ? 'rgba(255,255,255,0.14)' : NAVY + '18',
+                  opacity: seatCount >= maxSeats ? 0.4 : 1,
+                },
               ]}
             >
               <ThemedText style={[styles.stepperBtnText, { color: textPri }]}>+</ThemedText>
             </Pressable>
           </View>
-          <ThemedText style={[styles.stepperHint, { color: textSub }]}>
-            {maxSeats} seat{maxSeats === 1 ? '' : 's'} available on this ride
-          </ThemedText>
         </View>
 
-        <View style={styles.paymentSection}>
-          <ThemedText style={[styles.sectionLabel, { color: textSub }]}>Payment</ThemedText>
+        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: hair }]}>
+          <ThemedText style={[styles.sectionTitle, { color: textPri }]}>Mobile money</ThemedText>
+          <ThemedText style={[styles.sectionSub, { color: textSub }]}>
+            Pay with the number registered on your MTN or Airtel wallet.
+          </ThemedText>
 
           <View style={[styles.phoneRow, { backgroundColor: inputBg, borderColor: hair }]}>
             <ThemedText style={[styles.phonePrefix, { color: textPri }]}>+250</ThemedText>
@@ -444,27 +498,32 @@ export default function ConfirmBookingScreen() {
 
           {networkPill === 'mtn' ? (
             <View style={[styles.networkPill, { backgroundColor: TEAL + '22' }]}>
-              <ThemedText style={[styles.networkPillText, { color: TEAL }]}>MTN MoMo</ThemedText>
+              <ThemedText style={[styles.networkPillText, { color: TEAL }]}>MTN MoMo detected</ThemedText>
             </View>
           ) : null}
           {networkPill === 'airtel' ? (
             <View style={[styles.networkPill, { backgroundColor: AIRTEL_ORANGE + '22' }]}>
-              <ThemedText style={[styles.networkPillText, { color: AIRTEL_ORANGE }]}>Airtel Money</ThemedText>
+              <ThemedText style={[styles.networkPillText, { color: AIRTEL_ORANGE }]}>
+                Airtel Money detected
+              </ThemedText>
             </View>
           ) : null}
+        </View>
 
-          <View style={[styles.breakdownCard, { backgroundColor: inputBg }]}>
+        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: hair }]}>
+          <ThemedText style={[styles.sectionTitle, { color: textPri }]}>Price breakdown</ThemedText>
+          <View style={styles.breakdownRows}>
             <View style={styles.breakdownRow}>
-              <ThemedText style={[styles.breakdownLabel, { color: textPri }]}>Ride fare</ThemedText>
+              <ThemedText style={[styles.breakdownLabel, { color: textSub }]}>
+                Ride fare ({seatCount} seat{seatCount === 1 ? '' : 's'})
+              </ThemedText>
               <ThemedText style={[styles.breakdownValue, { color: textPri }]}>
                 RWF {rideFare.toLocaleString()}
               </ThemedText>
             </View>
             <View style={styles.breakdownRow}>
-              <ThemedText style={[styles.breakdownLabelMuted, { color: textSub }]}>
-                WeShare fee (10%)
-              </ThemedText>
-              <ThemedText style={[styles.breakdownValueMuted, { color: textSub }]}>
+              <ThemedText style={[styles.breakdownLabel, { color: textSub }]}>WeShare fee (10%)</ThemedText>
+              <ThemedText style={[styles.breakdownValue, { color: textSub }]}>
                 RWF {serviceFee.toLocaleString()}
               </ThemedText>
             </View>
@@ -485,13 +544,15 @@ export default function ConfirmBookingScreen() {
         </View>
 
         {paymentError && payPhase === 'form' ? (
-          <ThemedText style={styles.errorText}>{paymentError}</ThemedText>
+          <View style={[styles.errorBox, { backgroundColor: '#EF444412', borderColor: '#EF444430' }]}>
+            <ThemedText style={styles.errorText}>{paymentError}</ThemedText>
+          </View>
         ) : null}
 
         <Pressable
           onPress={onPay}
           disabled={!phoneValid || paying}
-          style={{ opacity: !phoneValid || paying ? 0.55 : 1 }}
+          style={[styles.payBtnWrap, { opacity: !phoneValid || paying ? 0.55 : 1 }]}
         >
           <LinearGradient
             colors={[ACCENT, '#FF4500']}
@@ -502,12 +563,17 @@ export default function ConfirmBookingScreen() {
             {paying ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <ThemedText style={styles.confirmText}>
-                Pay RWF {youPay.toLocaleString()} via Mobile Money
-              </ThemedText>
+              <>
+                <ThemedText style={styles.confirmText}>Pay RWF {youPay.toLocaleString()}</ThemedText>
+                <ThemedText style={styles.confirmSub}>via Mobile Money</ThemedText>
+              </>
             )}
           </LinearGradient>
         </Pressable>
+
+        <ThemedText style={[styles.escrowHint, { color: textSub }]}>
+          Funds are held securely until the driver confirms your booking.
+        </ThemedText>
       </ScrollView>
     </ScreenSafeArea>
   );
@@ -521,51 +587,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
   },
-  title: { fontSize: 18, fontWeight: '900' },
-  scroll: { padding: 16, gap: 14 },
-  summaryCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 10 },
-  chipRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  chip: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  chipText: { fontSize: 13, fontWeight: '900' },
-  arrow: { fontSize: 12, fontWeight: '700' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaText: { fontSize: 13, fontWeight: '600' },
-  priceLine: { fontSize: 16, fontWeight: '900' },
-  pricePer: { fontSize: 13, fontWeight: '600' },
-  noteBox: { flexDirection: 'row', gap: 8, borderRadius: 10, padding: 10, alignItems: 'flex-start' },
-  noteText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  stepperCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingTop: 18,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    gap: 12,
-    alignItems: 'center',
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-    alignSelf: 'flex-start',
-    includeFontPadding: false,
-  },
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  stepperBtn: {
+  headerBack: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperBtnText: { fontSize: 22, fontWeight: '400', lineHeight: 26 },
-  stepperValue: { fontSize: 28, fontWeight: '900', minWidth: 40, textAlign: 'center' },
+  headerBackSpacer: { width: 44 },
+  headerTitle: { fontSize: 18, fontWeight: '900', lineHeight: 24, flex: 1, textAlign: 'center' },
+  scroll: { padding: 20, gap: 14 },
+  phaseScroll: { padding: 20, gap: 14 },
+  tripCard: { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+  tripStrip: { height: 3, width: '100%' },
+  tripBody: { padding: 14, gap: 8 },
+  tripRouteRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tripFrom: { flex: 1, fontSize: 16, fontWeight: '900', lineHeight: 20 },
+  tripTo: { flex: 1, fontSize: 16, fontWeight: '900', lineHeight: 20 },
+  tripMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tripWhen: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
+  tripPrice: { fontSize: 12, fontWeight: '700' },
+  tripNote: { borderRadius: 10, padding: 10 },
+  tripNoteText: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  sectionCard: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '900', lineHeight: 22 },
+  sectionSub: { fontSize: 13, fontWeight: '600', lineHeight: 18, marginTop: -6 },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stepperBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnText: { fontSize: 24, fontWeight: '400', lineHeight: 28 },
+  stepperCenter: { alignItems: 'center', gap: 2 },
+  stepperValue: { fontSize: 32, fontWeight: '900', lineHeight: 36 },
   stepperHint: { fontSize: 12, fontWeight: '600' },
-  paymentSection: { gap: 10 },
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -583,26 +646,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  networkPillText: { fontSize: 13, fontWeight: '800' },
-  breakdownCard: { borderRadius: 14, padding: 14, gap: 8 },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  breakdownLabel: { fontSize: 14, fontWeight: '600' },
-  breakdownValue: { fontSize: 14, fontWeight: '700' },
-  breakdownLabelMuted: { fontSize: 14, fontWeight: '600' },
-  breakdownValueMuted: { fontSize: 14, fontWeight: '600' },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 2 },
-  breakdownBold: { fontSize: 15, fontWeight: '900' },
-  breakdownAccent: { fontSize: 16, fontWeight: '900' },
+  networkPillText: { fontSize: 12, fontWeight: '800' },
+  breakdownRows: { gap: 10 },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  breakdownLabel: { fontSize: 14, fontWeight: '600', flex: 1 },
+  breakdownValue: { fontSize: 14, fontWeight: '800' },
+  divider: { height: 1, marginVertical: 2 },
+  breakdownBold: { fontSize: 16, fontWeight: '900' },
+  breakdownAccent: { fontSize: 18, fontWeight: '900' },
   breakdownSmall: { fontSize: 12, fontWeight: '600' },
-  breakdownSmallTeal: { fontSize: 12, fontWeight: '700' },
-  errorText: { color: '#EF4444', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  breakdownSmallTeal: { fontSize: 12, fontWeight: '800' },
+  errorBox: { borderRadius: 12, borderWidth: 1, padding: 12 },
+  errorText: { color: '#EF4444', fontSize: 13, fontWeight: '700', textAlign: 'center', lineHeight: 18 },
+  payBtnWrap: { borderRadius: 16, overflow: 'hidden' },
   confirmGrad: {
-    height: 52,
-    borderRadius: 14,
+    minHeight: 56,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 2,
   },
-  confirmText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  confirmText: { color: '#fff', fontSize: 17, fontWeight: '900', lineHeight: 22 },
+  confirmSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700' },
+  escrowHint: { fontSize: 12, fontWeight: '600', textAlign: 'center', lineHeight: 17, marginTop: -4 },
   outlineBtn: {
     height: 44,
     paddingHorizontal: 20,
@@ -612,7 +680,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   outlineBtnText: { fontSize: 14, fontWeight: '700' },
-  waitTitle: { fontSize: 18, fontWeight: '900', textAlign: 'center' },
-  waitSub: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  waitHint: { fontSize: 12, fontWeight: '500', textAlign: 'center', marginTop: 4 },
+  phaseCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+  },
+  phaseIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phaseIconEmoji: { fontSize: 32, fontWeight: '900', color: '#EF4444', lineHeight: 36 },
+  waitTitle: { fontSize: 20, fontWeight: '900', textAlign: 'center', lineHeight: 26 },
+  waitSub: { fontSize: 14, fontWeight: '600', textAlign: 'center', lineHeight: 21, maxWidth: 320 },
+  waitHint: { fontSize: 12, fontWeight: '600', textAlign: 'center', color: 'rgba(8,17,31,0.45)' },
+  retryBtnWrap: { borderRadius: 14, overflow: 'hidden', width: '100%', marginTop: 4 },
 });

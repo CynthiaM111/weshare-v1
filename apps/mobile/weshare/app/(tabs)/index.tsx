@@ -34,6 +34,7 @@ import {
     hasPlacesKey,
     type PlaceSuggestion,
 } from '@/lib/places';
+import { formatDepartureFriendly } from '@/lib/datetime';
 import { searchRides, type Ride } from '@/lib/rides';
 
 
@@ -65,14 +66,6 @@ const KIGALI: Region = {
     latitude: -1.9441, longitude: 30.0619,
     latitudeDelta: 0.28, longitudeDelta: 0.28,
 };
-
-function formatDepart(d: Date) {
-    return d.toLocaleString(undefined, {
-        weekday: 'short', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-}
-
 
 async function fetchSuggestions(query: string): Promise<PlaceSuggestion[]> {
     const q = query.trim();
@@ -328,6 +321,7 @@ export default function FindRideScreen() {
     const textPri = isDark ? TEXT_W : TEXT_D;
     const textSub = isDark ? TEXT_W2 : TEXT_D2;
     const inputBg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(8,17,31,0.05)';
+    const cardBg = isDark ? NAVY_2 : '#FFF';
 
     const activeSugs = editing === 'from' ? fromSugs : toSugs;
 
@@ -619,46 +613,68 @@ export default function FindRideScreen() {
                         contentContainerStyle={{
                             paddingBottom: insets.bottom + 40,
                             paddingHorizontal: 16,
-                            gap: 10,
+                            gap: 12,
                             paddingTop: 4,
                         }}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                     >
                         <View style={styles.resultsHdr}>
-                            <View>
+                            <View style={styles.resultsHdrLeft}>
                                 <ThemedText style={[styles.resultsCount, { color: textPri }]}>
                                     {results.length > 0
-                                        ? `${results.length} ride${results.length === 1 ? '' : 's'}`
-                                        : 'No rides'}
+                                        ? `${results.length} ride${results.length === 1 ? '' : 's'} found`
+                                        : 'No rides found'}
                                 </ThemedText>
-                                <ThemedText style={[styles.routeLabel, { color: textSub }]}>
-                                    {fromText} → {toText}
-                                </ThemedText>
+                                <View style={[styles.resultsRouteChip, { backgroundColor: inputBg }]}>
+                                    <ThemedText style={[styles.resultsRouteChipFrom, { color: TEAL }]} numberOfLines={1}>
+                                        {fromText}
+                                    </ThemedText>
+                                    <IconSymbol name="arrow.forward" size={11} color={textSub} />
+                                    <ThemedText style={[styles.resultsRouteChipTo, { color: ACCENT }]} numberOfLines={1}>
+                                        {toText}
+                                    </ThemedText>
+                                </View>
                             </View>
                             <Pressable
                                 onPress={() => animateSheet(SHEET_PEEK, 'peek')}
-                                style={[styles.closeBtn, { backgroundColor: inputBg }]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close results"
+                                style={[
+                                    styles.closeBtn,
+                                    {
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : NAVY + '0C',
+                                        borderColor: isDark ? 'rgba(255,255,255,0.14)' : NAVY + '18',
+                                    },
+                                ]}
                             >
-                                <IconSymbol name="xmark" size={13} color={textSub} />
+                                <IconSymbol name="chevron.down" size={16} color={textPri} />
                             </Pressable>
                         </View>
 
                         {results.length === 0 && (
-                            <View style={[styles.noResults, { borderColor: hair, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#FFF' }]}>
+                            <View style={[styles.noResults, { borderColor: hair, backgroundColor: cardBg }]}>
+                                <View style={[styles.noResultsIcon, { backgroundColor: TEAL + '14' }]}>
+                                    <IconSymbol name="car.fill" size={26} color={TEAL} />
+                                </View>
                                 <ThemedText style={[styles.noResultsTitle, { color: textPri }]}>
                                     No rides on this route
                                 </ThemedText>
                                 <ThemedText style={[styles.noResultsSub, { color: textSub }]}>
-                                    Try nearby cities or check back later.
+                                    Try nearby cities or a different date, or post your own ride.
                                 </ThemedText>
                                 <Pressable
                                     onPress={() => router.push('/post-ride' as any)}
-                                    style={[styles.postRideBtn, { borderColor: hair }]}
+                                    style={styles.postRideBtnWrap}
                                 >
-                                    <ThemedText style={[styles.postRideBtnText, { color: textPri }]}>
-                                        Post a ride
-                                    </ThemedText>
+                                    <LinearGradient
+                                        colors={[ACCENT, '#FF4500']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.postRideBtnGrad}
+                                    >
+                                        <ThemedText style={styles.postRideBtnText}>Post a ride</ThemedText>
+                                    </LinearGradient>
                                 </Pressable>
                             </View>
                         )}
@@ -672,7 +688,7 @@ export default function FindRideScreen() {
                                 onBook={() => onBookRide(r.id)}
                                 onManage={() => router.push(`/rides/${r.id}` as any)}
                                 isOwn={session?.userId === r.postedByUserId}
-                                isDark={isDark}
+                                cardBg={cardBg}
                                 hair={hair}
                                 textPri={textPri}
                                 textSub={textSub}
@@ -687,59 +703,111 @@ export default function FindRideScreen() {
     );
 }
 
-// ─── Ride card ────────────────────────────────────────────────────────────────
-function RideCard({ ride, expanded, onToggle, onBook, onManage, isOwn, isDark, hair, textPri, textSub, inputBg }: {
+// ─── Ride card (search results) ───────────────────────────────────────────────
+function RideCard({ ride, expanded, onToggle, onBook, onManage, isOwn, cardBg, hair, textPri, textSub, inputBg }: {
     ride: Ride; expanded: boolean; onToggle: () => void;
     onBook: () => void; onManage: () => void; isOwn: boolean;
-    isDark: boolean; hair: string; textPri: string; textSub: string; inputBg: string;
+    cardBg: string; hair: string; textPri: string; textSub: string; inputBg: string;
 }) {
     const depart = new Date(ride.departAtISO);
-    const cardBg = isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF';
+    const hasDepart = !Number.isNaN(depart.getTime());
+    const departLabel = hasDepart ? formatDepartureFriendly(depart) : ride.departAtISO;
 
     return (
-        <Pressable onPress={onToggle} style={[styles.card, { backgroundColor: cardBg, borderColor: hair }]}>
-            <View style={styles.cardTop}>
-                <View style={styles.routeCol}>
-                    <ThemedText style={[styles.routeLine, { color: textPri }]} numberOfLines={1}>
-                        {ride.fromShort}
-                    </ThemedText>
-                    <ThemedText style={[styles.routeArrow, { color: textSub }]}>→ {ride.toShort}</ThemedText>
-                </View>
-                <View style={styles.priceCol}>
-                    <ThemedText style={[styles.price, { color: textPri }]}>
-                        RWF {ride.priceRwf.toLocaleString()}
-                    </ThemedText>
-                    <ThemedText style={[styles.priceSub, { color: textSub }]}>/ seat</ThemedText>
-                </View>
-            </View>
+        <Pressable onPress={onToggle} style={[styles.resultCard, { backgroundColor: cardBg, borderColor: hair }]}>
+            <View style={[styles.resultStrip, { backgroundColor: TEAL }]} />
 
-            <View style={styles.metaRow}>
-                <ThemedText style={[styles.metaInline, { color: textSub }]}>
-                    {Number.isNaN(depart.getTime()) ? ride.departAtISO : formatDepart(depart)}
-                </ThemedText>
-                <ThemedText style={[styles.metaDot, { color: textSub }]}>·</ThemedText>
-                <ThemedText style={[styles.metaInline, { color: textSub }]}>
-                    {ride.seats} seat{ride.seats === 1 ? '' : 's'}
-                </ThemedText>
-                <View style={{ flex: 1 }} />
-                <IconSymbol name={expanded ? 'chevron.up' : 'chevron.down'} size={12} color={textSub} />
-            </View>
-
-            {expanded && (
-                <View style={[styles.cardExpanded, { borderTopColor: hair }]}>
-                    {ride.note ? (
-                        <ThemedText style={[styles.noteText, { color: textSub }]}>{ride.note}</ThemedText>
-                    ) : null}
-                    <Pressable
-                        onPress={isOwn ? onManage : onBook}
-                        style={[styles.ctaBtn, { backgroundColor: inputBg, borderColor: hair }]}
-                    >
-                        <ThemedText style={[styles.ctaBtnText, { color: textPri }]}>
-                            {isOwn ? 'Manage ride' : 'Book this ride'}
+            <View style={styles.resultBody}>
+                {expanded ? (
+                    <View style={styles.resultRouteExpanded}>
+                        <View style={styles.resultRouteTrack}>
+                            <View style={[styles.resultDot, { backgroundColor: TEAL }]} />
+                            <View style={[styles.resultLine, { backgroundColor: hair }]} />
+                            <View style={[styles.resultDot, { backgroundColor: ACCENT }]} />
+                        </View>
+                        <View style={styles.resultRouteText}>
+                            <ThemedText style={[styles.resultEyebrow, { color: textSub }]}>FROM</ThemedText>
+                            <ThemedText style={[styles.resultPlace, { color: textPri }]} numberOfLines={2}>
+                                {ride.fromShort}
+                            </ThemedText>
+                            <ThemedText style={[styles.resultEyebrow, { color: textSub, marginTop: 10 }]}>TO</ThemedText>
+                            <ThemedText style={[styles.resultPlace, { color: textPri }]} numberOfLines={2}>
+                                {ride.toShort}
+                            </ThemedText>
+                        </View>
+                    </View>
+                ) : (
+                    <View style={styles.resultRouteRow}>
+                        <ThemedText style={[styles.resultFrom, { color: textPri }]} numberOfLines={1}>
+                            {ride.fromShort}
                         </ThemedText>
-                    </Pressable>
+                        <IconSymbol name="arrow.forward" size={12} color={textSub} style={styles.resultArrowIcon} />
+                        <ThemedText style={[styles.resultTo, { color: textPri }]} numberOfLines={1}>
+                            {ride.toShort}
+                        </ThemedText>
+                    </View>
+                )}
+
+                <View style={styles.resultMid}>
+                    <View style={styles.resultMeta}>
+                        <IconSymbol name="clock.fill" size={12} color={textSub} />
+                        <ThemedText style={[styles.resultWhen, { color: textSub }]} numberOfLines={1}>
+                            {departLabel}
+                        </ThemedText>
+                    </View>
+                    <View style={[styles.resultSeatsPill, { backgroundColor: inputBg }]}>
+                        <IconSymbol name="person.2.fill" size={11} color={textSub} />
+                        <ThemedText style={[styles.resultSeatsText, { color: textPri }]}>
+                            {ride.seats}
+                        </ThemedText>
+                    </View>
                 </View>
-            )}
+
+                <View style={styles.resultBottom}>
+                    <View>
+                        <ThemedText style={[styles.resultPrice, { color: ACCENT }]}>
+                            RWF {ride.priceRwf.toLocaleString()}
+                        </ThemedText>
+                        <ThemedText style={[styles.resultPriceSub, { color: textSub }]}>per seat</ThemedText>
+                    </View>
+                    <View style={[styles.resultChevron, { backgroundColor: inputBg }]}>
+                        <IconSymbol name={expanded ? 'chevron.up' : 'chevron.down'} size={14} color={textSub} />
+                    </View>
+                </View>
+
+                {expanded && (
+                    <View style={[styles.resultExpanded, { borderTopColor: hair }]}>
+                        {ride.note ? (
+                            <View style={[styles.resultNote, { backgroundColor: inputBg }]}>
+                                <IconSymbol name="text.bubble.fill" size={12} color={textSub} />
+                                <ThemedText style={[styles.resultNoteText, { color: textSub }]}>{ride.note}</ThemedText>
+                            </View>
+                        ) : null}
+                        {isOwn ? (
+                            <Pressable
+                                onPress={onManage}
+                                style={[styles.resultCtaOutline, { borderColor: hair }]}
+                            >
+                                <ThemedText style={[styles.resultCtaOutlineText, { color: textPri }]}>
+                                    Manage ride
+                                </ThemedText>
+                            </Pressable>
+                        ) : (
+                            <Pressable onPress={onBook} style={styles.resultCtaWrap}>
+                                <LinearGradient
+                                    colors={[TEAL, '#00a896']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.resultCtaGrad}
+                                >
+                                    <ThemedText style={styles.resultCtaText}>Book this ride</ThemedText>
+                                    <IconSymbol name="chevron.right" size={14} color="rgba(255,255,255,0.9)" />
+                                </LinearGradient>
+                            </Pressable>
+                        )}
+                    </View>
+                )}
+            </View>
         </Pressable>
     );
 }
@@ -874,37 +942,91 @@ const styles = StyleSheet.create({
 
     resultsList: { flex: 1 },
     resultsHdr: {
-        flexDirection: 'row', alignItems: 'flex-start',
-        justifyContent: 'space-between', marginBottom: 6,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+        gap: 12,
     },
-    resultsCount: { fontSize: 18, fontWeight: '900' },
-    routeLabel: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-    closeBtn: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    noResults: { borderRadius: 16, borderWidth: 1, padding: 24, alignItems: 'center', gap: 8 },
-    noResultsTitle: { fontSize: 16, fontWeight: '800' },
-    noResultsSub: { fontSize: 13, fontWeight: '500', textAlign: 'center', lineHeight: 18 },
-    postRideBtn: {
-        marginTop: 8, height: 40, paddingHorizontal: 18,
-        borderRadius: 10, borderWidth: 1, justifyContent: 'center',
+    resultsHdrLeft: { flex: 1, gap: 8, minWidth: 0 },
+    resultsCount: { fontSize: 20, fontWeight: '900', lineHeight: 26 },
+    resultsRouteChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
+        maxWidth: '100%',
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
     },
-    postRideBtnText: { fontSize: 14, fontWeight: '700' },
+    resultsRouteChipFrom: { fontSize: 12, fontWeight: '800', flexShrink: 1 },
+    resultsRouteChipTo: { fontSize: 12, fontWeight: '800', flexShrink: 1 },
+    closeBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noResults: { borderRadius: 20, borderWidth: 1, padding: 28, alignItems: 'center', gap: 10 },
+    noResultsIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    noResultsTitle: { fontSize: 17, fontWeight: '900', lineHeight: 22 },
+    noResultsSub: { fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 19, maxWidth: 280 },
+    postRideBtnWrap: { borderRadius: 14, overflow: 'hidden', marginTop: 6, width: '100%' },
+    postRideBtnGrad: { height: 48, alignItems: 'center', justifyContent: 'center' },
+    postRideBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
 
-    card: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
-    cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-    routeCol: { flex: 1, gap: 2 },
-    routeLine: { fontSize: 15, fontWeight: '800' },
-    routeArrow: { fontSize: 14, fontWeight: '600' },
-    priceCol: { alignItems: 'flex-end', flexShrink: 0 },
-    price: { fontSize: 14, fontWeight: '800' },
-    priceSub: { fontSize: 11, fontWeight: '500', marginTop: 1 },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    metaInline: { fontSize: 12, fontWeight: '500' },
-    metaDot: { fontSize: 12, fontWeight: '500' },
-    cardExpanded: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, gap: 10 },
-    noteText: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
-    ctaBtn: {
-        height: 44, borderRadius: 10, borderWidth: 1,
-        alignItems: 'center', justifyContent: 'center',
+    resultCard: { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+    resultStrip: { height: 3, width: '100%' },
+    resultBody: { padding: 14, gap: 12 },
+    resultRouteRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    resultFrom: { flex: 1, fontSize: 16, fontWeight: '900', lineHeight: 20 },
+    resultTo: { flex: 1, fontSize: 16, fontWeight: '900', lineHeight: 20 },
+    resultArrowIcon: { flexShrink: 0 },
+    resultRouteExpanded: { flexDirection: 'row', gap: 12 },
+    resultRouteTrack: { alignItems: 'center', width: 12, paddingTop: 2 },
+    resultDot: { width: 9, height: 9, borderRadius: 5 },
+    resultLine: { flex: 1, width: 2, minHeight: 36, marginVertical: 4, borderRadius: 1 },
+    resultRouteText: { flex: 1 },
+    resultEyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 0.7 },
+    resultPlace: { fontSize: 15, fontWeight: '900', lineHeight: 20 },
+    resultMid: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    resultMeta: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
+    resultWhen: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
+    resultSeatsPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        borderRadius: 20,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
     },
-    ctaBtnText: { fontSize: 14, fontWeight: '700' },
+    resultSeatsText: { fontSize: 12, fontWeight: '800' },
+    resultBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    resultPrice: { fontSize: 18, fontWeight: '900', lineHeight: 22 },
+    resultPriceSub: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+    resultChevron: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    resultExpanded: { borderTopWidth: 1, paddingTop: 12, gap: 12 },
+    resultNote: { flexDirection: 'row', gap: 8, borderRadius: 12, padding: 10, alignItems: 'flex-start' },
+    resultNoteText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+    resultCtaWrap: { borderRadius: 14, overflow: 'hidden' },
+    resultCtaGrad: {
+        height: 48,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingHorizontal: 20,
+    },
+    resultCtaText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+    resultCtaOutline: {
+        height: 48,
+        borderRadius: 14,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    resultCtaOutlineText: { fontSize: 15, fontWeight: '800' },
 }) as any;

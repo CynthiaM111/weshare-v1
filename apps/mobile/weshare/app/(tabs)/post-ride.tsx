@@ -35,6 +35,7 @@ import {
   googlePlaceDetails,
   type PlaceSuggestion,
 } from '@/lib/places';
+import { formatDepartureFriendly } from '@/lib/datetime';
 import { createRide } from '@/lib/rides';
 
 const NAVY = '#08111F';
@@ -82,25 +83,6 @@ function formatYMD(d: Date) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1
 function formatHM(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 function formatDateLong(d: Date) {
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatDepartureFriendly(d: Date) {
-  const now = new Date();
-  const startOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dayDiff = Math.round((startOf(d).getTime() - startOf(now).getTime()) / 86_400_000);
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-
-  if (dayDiff === 0) return `Today at ${time}`;
-  if (dayDiff === 1) return `Tomorrow at ${time}`;
-
-  const dateOpts: Intl.DateTimeFormatOptions = {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' as const } : {}),
-  };
-  const date = d.toLocaleDateString(undefined, dateOpts);
-  return `${date} · ${time}`;
 }
 
 export default function PostRideScreen() {

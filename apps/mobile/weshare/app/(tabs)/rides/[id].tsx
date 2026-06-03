@@ -32,6 +32,7 @@ import {
 import { getCoordsForRideGps } from '@/lib/location';
 import { getPaymentForBooking, verifyGpsAndPayout } from '@/lib/payments';
 import { supabase } from '@/lib/supabase';
+import { formatDepartDate, formatDepartTime } from '@/lib/datetime';
 import { cancelRide, getRide, startRide, updateRideStatus, type Ride } from '@/lib/rides';
 
 const NAVY = '#08111F';
@@ -60,15 +61,28 @@ const RIDE_STATUS_COLOR: Record<string, string> = {
 
 type BookingRow = BookingWithPassenger;
 
-function formatDepart(d: Date) {
-  return d.toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+const RIDE_STATUS_LABEL: Record<string, string> = {
+  active: 'Active',
+  started: 'In progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+};
+
+const BOOKING_STATUS_LABEL: Record<string, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  started: 'On trip',
+  cancelled: 'Cancelled',
+  completed: 'Completed',
+};
+
+function statusTint(hex: string) {
+  return `${hex}22`;
+}
+
+function passengerInitial(name: string) {
+  const t = name.trim();
+  return t ? t.charAt(0).toUpperCase() : '?';
 }
 
 function stripRwandaLocal(phone: string) {
@@ -104,6 +118,7 @@ export default function RideDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [showStartConfirm, setShowStartConfirm] = useState(false);
   const [startingRide, setStartingRide] = useState(false);
   const [completingRide, setCompletingRide] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -197,6 +212,7 @@ export default function RideDetailScreen() {
           p_booking_id: b.id,
         });
       }
+      setShowStartConfirm(false);
       setRide(prev => (prev ? { ...prev, status: 'started' } : prev));
       setBookings(prev =>
         prev.map(b =>
@@ -381,7 +397,17 @@ export default function RideDetailScreen() {
 
   const isOwner = session?.userId === ride.postedByUserId;
   const depart = new Date(ride.departAtISO);
-  const hasConfirmedBooking = bookings.some(b => b.status === 'confirmed');
+  const hasDepart = !Number.isNaN(depart.getTime());
+  const stripColor = RIDE_STATUS_COLOR[ride.status] ?? TEAL;
+  const bookedSeats = bookings
+    .filter(b => b.status !== 'cancelled')
+    .reduce((sum, b) => sum + b.seats, 0);
+  const pendingCount = bookings.filter(b => b.status === 'pending').length;
+  const confirmedCount = bookings.filter(b => b.status === 'confirmed').length;
+  const hasConfirmedBooking = confirmedCount > 0;
+  const compactDepart = hasDepart
+    ? `${formatDepartDate(depart)} · ${formatDepartTime(depart)}`
+    : ride.departAtISO;
   const showStartRide = isOwner && ride.status === 'active' && hasConfirmedBooking;
   const showCompleteRideBtn = isOwner && ride.status === 'started';
   const showPayoutPhoneCard = isOwner && (ride.status === 'active' || ride.status === 'started');
@@ -392,11 +418,22 @@ export default function RideDetailScreen() {
   return (
     <ScreenSafeArea backgroundColor={bg} topBackgroundColor={cardBg}>
       <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
-        <Pressable onPress={() => router.replace('/my-rides' as any)} hitSlop={12}>
-          <IconSymbol name="chevron.left" size={20} color={ACCENT} />
+        <Pressable
+          onPress={() => router.replace('/my-rides' as any)}
+          accessibilityRole="button"
+          accessibilityLabel="Back to my rides"
+          style={[
+            styles.headerBack,
+            {
+              backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : NAVY + '0C',
+              borderColor: isDark ? 'rgba(255,255,255,0.38)' : NAVY + '55',
+            },
+          ]}
+        >
+          <IconSymbol name="chevron.left" size={22} color={textPri} />
         </Pressable>
         <ThemedText style={[styles.headerTitle, { color: textPri }]}>Ride details</ThemedText>
-        <View style={{ width: 20 }} />
+        <View style={styles.headerBackSpacer} />
       </View>
 
       <ScrollView
@@ -404,83 +441,78 @@ export default function RideDetailScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.summaryCard, { backgroundColor: cardBg, borderColor: hair }]}>
-          <View style={styles.summaryTop}>
-            <View style={{ flex: 1 }}>
-              <View style={styles.chipRow}>
-                <View style={[styles.chip, { backgroundColor: TEAL + '18' }]}>
-                  <ThemedText style={[styles.chipText, { color: TEAL }]}>{ride.fromShort}</ThemedText>
-                </View>
-                <ThemedText style={[styles.arrow, { color: textSub }]}>→</ThemedText>
-                <View style={[styles.chip, { backgroundColor: ACCENT + '18' }]}>
-                  <ThemedText style={[styles.chipText, { color: ACCENT }]}>{ride.toShort}</ThemedText>
-                </View>
-              </View>
-              <View style={styles.metaRow}>
-                <IconSymbol name="clock.fill" size={13} color={textSub} />
-                <ThemedText style={[styles.metaText, { color: textSub }]}>
-                  {Number.isNaN(depart.getTime()) ? ride.departAtISO : formatDepart(depart)}
-                </ThemedText>
-              </View>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: (RIDE_STATUS_COLOR[ride.status] ?? TEAL) + '22' }]}>
-              <ThemedText style={[styles.statusBadgeText, { color: RIDE_STATUS_COLOR[ride.status] ?? TEAL }]}>
-                {ride.status}
+        <View style={[styles.compactTrip, { backgroundColor: inputBg, borderColor: hair }]}>
+          <View style={styles.compactTripTop}>
+            <ThemedText style={[styles.compactRoute, { color: textSub }]} numberOfLines={1}>
+              {ride.fromShort} → {ride.toShort}
+            </ThemedText>
+            <View style={[styles.compactStatus, { backgroundColor: statusTint(stripColor) }]}>
+              <ThemedText style={[styles.compactStatusText, { color: stripColor }]}>
+                {RIDE_STATUS_LABEL[ride.status] ?? ride.status}
               </ThemedText>
             </View>
           </View>
-
-          <View style={styles.detailRow}>
-            <View style={[styles.detailChip, { backgroundColor: inputBg }]}>
-              <IconSymbol name="person.2.fill" size={12} color={textSub} />
-              <ThemedText style={[styles.metaText, { color: textSub }]}>
-                {ride.seats} seat{ride.seats === 1 ? '' : 's'}
-              </ThemedText>
-            </View>
-            <View style={[styles.detailChip, { backgroundColor: inputBg }]}>
-              <ThemedText style={[styles.priceText, { color: textPri }]}>
-                RWF {ride.priceRwf.toLocaleString()} / seat
-              </ThemedText>
-            </View>
-          </View>
-
-          {ride.note ? (
-            <View style={[styles.noteBox, { backgroundColor: inputBg }]}>
-              <IconSymbol name="text.bubble.fill" size={12} color={textSub} />
-              <ThemedText style={[styles.noteText, { color: textSub }]}>{ride.note}</ThemedText>
-            </View>
-          ) : null}
+          <ThemedText style={[styles.compactMeta, { color: textSub }]} numberOfLines={1}>
+            {compactDepart} · {bookedSeats}/{ride.seats} booked
+          </ThemedText>
         </View>
 
-        <ThemedText style={[styles.sectionTitle, { color: textPri }]}>
-          Bookings ({bookings.length})
-        </ThemedText>
+        <View style={styles.bookingsSection}>
+          <View style={styles.sectionHead}>
+            <ThemedText style={[styles.bookingsSectionTitle, { color: textPri }]}>Passenger bookings</ThemedText>
+            <View style={[styles.sectionCount, { backgroundColor: ACCENT + '18' }]}>
+              <ThemedText style={[styles.sectionCountText, { color: ACCENT }]}>{bookings.length}</ThemedText>
+            </View>
+            {pendingCount > 0 ? (
+              <View style={[styles.pendingBadge, { backgroundColor: GOLD + '22' }]}>
+                <ThemedText style={[styles.pendingBadgeText, { color: GOLD }]}>
+                  {pendingCount} pending
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
+          {pendingCount > 0 ? (
+            <ThemedText style={[styles.bookingsSectionSub, { color: textSub }]}>
+              Review and confirm pending requests before you start the ride.
+            </ThemedText>
+          ) : null}
 
         {bookings.length === 0 ? (
           <View style={[styles.emptyBox, { backgroundColor: cardBg, borderColor: hair }]}>
+            <View style={[styles.emptyIcon, { backgroundColor: TEAL + '14' }]}>
+              <IconSymbol name="person.2.fill" size={28} color={TEAL} />
+            </View>
+            <ThemedText style={[styles.emptyTitle, { color: textPri }]}>No bookings yet</ThemedText>
             <ThemedText style={[styles.emptyText, { color: textSub }]}>
-              No bookings yet for this ride.
+              When passengers book this ride, they'll show up here for you to confirm.
             </ThemedText>
           </View>
         ) : (
           bookings.map(b => {
             const total = ride.priceRwf * b.seats;
             const busy = actionId === b.id;
+            const name = passengerDisplayName(b.passengerProfile, b.passengerId);
+            const statusColor = BOOKING_STATUS_COLOR[b.status] ?? TEAL;
 
             return (
               <View key={b.id} style={[styles.bookingCard, { backgroundColor: cardBg, borderColor: hair }]}>
                 <View style={styles.bookingTop}>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={[styles.passengerName, { color: textPri }]}>
-                      {passengerDisplayName(b.passengerProfile, b.passengerId)}
+                  <View style={[styles.avatar, { backgroundColor: statusColor + '20' }]}>
+                    <ThemedText style={[styles.avatarText, { color: statusColor }]}>
+                      {passengerInitial(name)}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.bookingInfo}>
+                    <ThemedText style={[styles.passengerName, { color: textPri }]} numberOfLines={1}>
+                      {name}
                     </ThemedText>
                     <ThemedText style={[styles.bookingMeta, { color: textSub }]}>
                       {b.seats} seat{b.seats === 1 ? '' : 's'} · RWF {total.toLocaleString()}
                     </ThemedText>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: BOOKING_STATUS_COLOR[b.status] + '22' }]}>
-                    <ThemedText style={[styles.statusBadgeText, { color: BOOKING_STATUS_COLOR[b.status] }]}>
-                      {b.status}
+                  <View style={[styles.statusPill, { backgroundColor: statusTint(statusColor) }]}>
+                    <ThemedText style={[styles.statusPillText, { color: statusColor }]}>
+                      {BOOKING_STATUS_LABEL[b.status] ?? b.status}
                     </ThemedText>
                   </View>
                 </View>
@@ -490,33 +522,38 @@ export default function RideDetailScreen() {
                     <Pressable
                       onPress={() => onBookingAction(b.id, 'confirmed')}
                       disabled={busy}
-                      style={[styles.confirmBtn, { opacity: busy ? 0.6 : 1 }]}
+                      style={[styles.confirmWrap, { flex: 1, opacity: busy ? 0.6 : 1 }]}
                     >
-                      <ThemedText style={styles.actionBtnText}>Confirm</ThemedText>
+                      <LinearGradient colors={[TEAL, '#00a896']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.confirmGrad}>
+                        {busy ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <ThemedText style={styles.actionBtnText}>Confirm</ThemedText>
+                        )}
+                      </LinearGradient>
                     </Pressable>
                     <Pressable
                       onPress={() => onDeclineBooking(b.id, b.rideId)}
                       disabled={busy}
-                      style={[styles.declineBtn, { opacity: busy ? 0.6 : 1 }]}
+                      style={[
+                        styles.declineOutline,
+                        { borderColor: RED + '45', opacity: busy ? 0.6 : 1 },
+                      ]}
                     >
-                      <ThemedText style={styles.actionBtnText}>Decline</ThemedText>
+                      <ThemedText style={[styles.declineOutlineText, { color: RED }]}>Decline</ThemedText>
                     </Pressable>
                   </View>
                 )}
 
                 {(b.status === 'confirmed' || b.status === 'started' || b.status === 'completed') && (
-                  <View style={styles.confirmedRow}>
+                  <View style={[styles.confirmedRow, { backgroundColor: statusTint(statusColor) }]}>
                     <IconSymbol
                       name={b.status === 'started' ? 'car.fill' : 'checkmark.circle.fill'}
                       size={14}
-                      color={BOOKING_STATUS_COLOR[b.status]}
+                      color={statusColor}
                     />
-                    <ThemedText style={[styles.confirmedLabel, { color: textSub }]}>
-                      {b.status === 'started'
-                        ? 'Ride in progress'
-                        : b.status === 'completed'
-                          ? 'Completed'
-                          : 'Confirmed'}
+                    <ThemedText style={[styles.confirmedLabel, { color: statusColor }]}>
+                      {BOOKING_STATUS_LABEL[b.status] ?? b.status}
                     </ThemedText>
                   </View>
                 )}
@@ -524,12 +561,23 @@ export default function RideDetailScreen() {
             );
           })
         )}
+        </View>
 
         {showPayoutPhoneCard && (
           <View style={[styles.payoutPhoneCard, { backgroundColor: cardBg, borderColor: hair }]}>
-            <ThemedText style={[styles.payoutPhoneLabel, { color: textSub }]}>YOUR PAYOUT NUMBER</ThemedText>
+            <View style={styles.payoutPhoneHead}>
+              <View style={[styles.departIcon, { backgroundColor: TEAL + '16' }]}>
+                <IconSymbol name="person.fill" size={15} color={TEAL} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={[styles.payoutPhoneTitle, { color: textPri }]}>Payout number</ThemedText>
+                <ThemedText style={[styles.payoutPhoneHint, { color: textSub }]}>
+                  Mobile money for ride earnings
+                </ThemedText>
+              </View>
+            </View>
             {savedDriverPhoneDigits ? (
-              <ThemedText style={[styles.payoutPhoneHint, { color: textSub }]}>
+              <ThemedText style={[styles.payoutPhoneSaved, { color: TEAL }]}>
                 Saved — edit and tap Save to update
               </ThemedText>
             ) : null}
@@ -573,20 +621,61 @@ export default function RideDetailScreen() {
         )}
 
         {showStartRide && (
-          <Pressable onPress={onStartRide} disabled={startingRide} style={styles.rideActionWrap}>
-            <LinearGradient
-              colors={[ACCENT, '#FF4500']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.rideActionGrad}
-            >
-              {startingRide ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText style={styles.rideActionText}>Start Ride 🚗</ThemedText>
-              )}
-            </LinearGradient>
-          </Pressable>
+          showStartConfirm ? (
+            <View style={[styles.startWarningCard, { backgroundColor: cardBg, borderColor: AMBER + '50' }]}>
+              <View style={styles.startWarningHead}>
+                <View style={[styles.startWarningIcon, { backgroundColor: AMBER + '18' }]}>
+                  <IconSymbol name="car.fill" size={18} color={AMBER} />
+                </View>
+                <ThemedText style={[styles.startWarningTitle, { color: textPri }]}>Ready to start?</ThemedText>
+              </View>
+              <ThemedText style={[styles.startWarningBody, { color: textSub }]}>
+                {confirmedCount === 1
+                  ? '1 confirmed passenger will be notified that you\'re on the way.'
+                  : `${confirmedCount} confirmed passengers will be notified that you're on the way.`}{' '}
+                WeShare uses your location when you start and complete the ride—only continue when you're ready to
+                depart.
+              </ThemedText>
+              <View style={styles.startWarningActions}>
+                <Pressable
+                  onPress={() => setShowStartConfirm(false)}
+                  disabled={startingRide}
+                  style={[styles.startWarningCancel, { borderColor: hair }]}
+                >
+                  <ThemedText style={[styles.startWarningCancelText, { color: textPri }]}>Not yet</ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={onStartRide}
+                  disabled={startingRide}
+                  style={[styles.startWarningConfirmWrap, { flex: 1, opacity: startingRide ? 0.6 : 1 }]}
+                >
+                  <LinearGradient
+                    colors={[ACCENT, '#FF4500']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.startWarningConfirmGrad}
+                  >
+                    {startingRide ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <ThemedText style={styles.rideActionText}>Yes, start ride</ThemedText>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable onPress={() => setShowStartConfirm(true)} style={styles.rideActionWrap}>
+              <LinearGradient
+                colors={[ACCENT, '#FF4500']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.rideActionGrad}
+              >
+                <ThemedText style={styles.rideActionText}>Start ride</ThemedText>
+              </LinearGradient>
+            </Pressable>
+          )
         )}
 
         {showCompleteRideBtn && !showCompleteConfirm && (
@@ -600,7 +689,7 @@ export default function RideDetailScreen() {
               {completingRide ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <ThemedText style={styles.rideActionText}>Complete Ride ✓</ThemedText>
+                <ThemedText style={styles.rideActionText}>Complete ride</ThemedText>
               )}
             </LinearGradient>
           </Pressable>
@@ -720,34 +809,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
   },
-  headerTitle: { fontSize: 18, fontWeight: '900' },
-  scroll: { padding: 16, gap: 12 },
-  summaryCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
-  summaryTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  chipRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  chip: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  chipText: { fontSize: 13, fontWeight: '900' },
-  arrow: { fontSize: 12, fontWeight: '700' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  metaText: { fontSize: 13, fontWeight: '600' },
-  statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  statusBadgeText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-  detailRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  detailChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  priceText: { fontSize: 13, fontWeight: '800' },
-  noteBox: { flexDirection: 'row', gap: 8, borderRadius: 10, padding: 10, alignItems: 'flex-start' },
-  noteText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  sectionTitle: { fontSize: 16, fontWeight: '900', marginTop: 4 },
-  emptyBox: { borderRadius: 14, borderWidth: 1, padding: 16 },
-  emptyText: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
-  bookingCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
-  bookingTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  passengerName: { fontSize: 15, fontWeight: '800' },
-  bookingMeta: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-  actions: { flexDirection: 'row', gap: 10 },
+  headerBack: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBackSpacer: { width: 44 },
+  headerTitle: { fontSize: 18, fontWeight: '900', lineHeight: 24, flex: 1, textAlign: 'center' },
+  scroll: { padding: 20, gap: 14 },
+  compactTrip: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, gap: 4 },
+  compactTripTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  compactRoute: { flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 16 },
+  compactStatus: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  compactStatusText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.3, textTransform: 'uppercase' },
+  compactMeta: { fontSize: 11, fontWeight: '600', lineHeight: 15 },
+  bookingsSection: { gap: 12 },
+  bookingsSectionTitle: { fontSize: 20, fontWeight: '900', lineHeight: 26 },
+  bookingsSectionSub: { fontSize: 13, fontWeight: '600', lineHeight: 18, marginTop: -4 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  departIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  startWarningCard: { borderRadius: 18, borderWidth: 1.5, padding: 16, gap: 12 },
+  startWarningHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  startWarningIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  startWarningTitle: { fontSize: 17, fontWeight: '900', lineHeight: 22, flex: 1 },
+  startWarningBody: { fontSize: 14, fontWeight: '600', lineHeight: 21 },
+  startWarningActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  startWarningCancel: {
+    height: 48,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startWarningCancelText: { fontSize: 14, fontWeight: '800' },
+  startWarningConfirmWrap: { borderRadius: 12, overflow: 'hidden' },
+  startWarningConfirmGrad: { height: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  sectionCount: { minWidth: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  sectionCountText: { fontSize: 13, fontWeight: '900' },
+  pendingBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  pendingBadgeText: { fontSize: 11, fontWeight: '800' },
+  emptyBox: { borderRadius: 18, borderWidth: 1, padding: 28, alignItems: 'center', gap: 10 },
+  emptyIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 16, fontWeight: '900' },
+  emptyText: { fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 19, maxWidth: 280 },
+  bookingCard: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 12, shadowColor: '#08111F', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  bookingTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 18, fontWeight: '900' },
+  bookingInfo: { flex: 1, gap: 2, minWidth: 0 },
+  passengerName: { fontSize: 16, fontWeight: '900', lineHeight: 20 },
+  bookingMeta: { fontSize: 12, fontWeight: '600' },
+  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  statusPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  actions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  confirmWrap: { borderRadius: 12, overflow: 'hidden' },
+  confirmGrad: {
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+  },
+  declineOutline: {
+    height: 44,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  declineOutlineText: { fontSize: 13, fontWeight: '900' },
   confirmBtn: {
     flex: 1,
     height: 40,
@@ -765,11 +904,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
-  confirmedRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  confirmedLabel: { fontSize: 13, fontWeight: '700' },
-  payoutPhoneCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 10 },
-  payoutPhoneLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
-  payoutPhoneHint: { fontSize: 12, fontWeight: '600', marginTop: -4 },
+  confirmedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  confirmedLabel: { fontSize: 13, fontWeight: '800' },
+  payoutPhoneCard: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 12 },
+  payoutPhoneHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  payoutPhoneTitle: { fontSize: 15, fontWeight: '900', lineHeight: 20 },
+  payoutPhoneHint: { fontSize: 12, fontWeight: '600', lineHeight: 16 },
+  payoutPhoneSaved: { fontSize: 12, fontWeight: '700' },
   payoutPhoneRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   phoneRow: {
     flexDirection: 'row',

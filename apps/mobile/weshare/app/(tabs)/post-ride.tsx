@@ -16,6 +16,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -46,11 +47,60 @@ type LatLng = { latitude: number; longitude: number };
 const STEPS = ['Route', 'Details', 'Review'] as const;
 type Step = typeof STEPS[number];
 
+const SEATS_MIN = 1;
+const SEATS_MAX = 10;
+const PRICE_MIN = 1000;
+const PRICE_MAX = 25000;
+
+function parseWholeNumber(raw: string): number | null {
+  const t = raw.trim();
+  if (!t || !/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
+function seatsValidationMessage(raw: string): string | null {
+  if (!raw.trim()) return null;
+  const n = parseWholeNumber(raw);
+  if (n == null) return 'Enter a whole number of seats (1–10).';
+  if (n < SEATS_MIN) return 'You need at least 1 seat to offer.';
+  if (n > SEATS_MAX) return 'You can offer up to 10 seats at a time.';
+  return null;
+}
+
+function priceValidationMessage(raw: string): string | null {
+  if (!raw.trim()) return null;
+  const n = parseWholeNumber(raw);
+  if (n == null) return 'Enter the price as a whole number in RWF.';
+  if (n < PRICE_MIN) return `Price per seat starts at RWF ${PRICE_MIN.toLocaleString()}.`;
+  if (n > PRICE_MAX) return `Let's keep it at RWF ${PRICE_MAX.toLocaleString()} or less per seat.`;
+  return null;
+}
+
 function pad2(n: number) { return n < 10 ? `0${n}` : `${n}`; }
 function formatYMD(d: Date) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 function formatHM(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 function formatDateLong(d: Date) {
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDepartureFriendly(d: Date) {
+  const now = new Date();
+  const startOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round((startOf(d).getTime() - startOf(now).getTime()) / 86_400_000);
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  if (dayDiff === 0) return `Today at ${time}`;
+  if (dayDiff === 1) return `Tomorrow at ${time}`;
+
+  const dateOpts: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' as const } : {}),
+  };
+  const date = d.toLocaleDateString(undefined, dateOpts);
+  return `${date} · ${time}`;
 }
 
 export default function PostRideScreen() {
@@ -192,8 +242,19 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
   }
 
   const routeValid = fromConfirmed && toConfirmed;
-  const detailsValid = departDate.trim().length === 10 && departTime.trim().length === 5
-    && Number(seats) > 0 && Number(price) > 0;
+  const seatsNum = parseWholeNumber(seats);
+  const priceNum = parseWholeNumber(price);
+  const seatsErr = seatsValidationMessage(seats);
+  const priceErr = priceValidationMessage(price);
+  const detailsValid =
+    departDate.trim().length === 10
+    && departTime.trim().length === 5
+    && seatsNum != null
+    && seatsNum >= SEATS_MIN
+    && seatsNum <= SEATS_MAX
+    && priceNum != null
+    && priceNum >= PRICE_MIN
+    && priceNum <= PRICE_MAX;
 
   function buildDepartISO() {
     try { return new Date(`${departDate}T${departTime}:00`).toISOString(); } catch { return ''; }
@@ -210,8 +271,10 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
         fromLat: fromCoord?.latitude ?? null, fromLng: fromCoord?.longitude ?? null,
         to: toFull || toText, toShort: toText.trim(),
         toLat: toCoord?.latitude ?? null, toLng: toCoord?.longitude ?? null,
-        departAtISO: departISO, seats: Number(seats),
-        priceRwf: Number(price), note: note.trim() || undefined,
+        departAtISO: departISO,
+        seats: seatsNum!,
+        priceRwf: priceNum!,
+        note: note.trim() || undefined,
       });
       setPosted(true);
     } catch (e: any) {
@@ -249,26 +312,111 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
 
   // ── Success screen ────────────────────────────────────────
   if (posted) {
+    const seatCount = seatsNum ?? Number(seats);
+    const priceEach = priceNum ?? Number(price);
+    const departureLabel = departAt ? formatDepartureFriendly(departAt) : '';
+
     return (
-      <View style={[styles.successRoot, { backgroundColor: isDark ? NAVY : '#F5F7FA' }]}>
-        <LinearGradient colors={[TEAL + '22', 'transparent']} style={styles.successBlob} />
-        <View style={[styles.successIcon, { backgroundColor: TEAL + '18', borderColor: TEAL + '30' }]}>
-          <IconSymbol name="checkmark.circle.fill" size={52} color={TEAL} />
-        </View>
-        <ThemedText style={[styles.successTitle, { color: textPri }]}>Ride posted!</ThemedText>
-        <ThemedText style={[styles.successSub, { color: textSub }]}>
-          Your ride from {fromText} to {toText} is now live for passengers to find.
-        </ThemedText>
-        <Pressable onPress={() => router.replace('/my-rides' as any)} style={styles.successBtn}>
-          <LinearGradient colors={[ACCENT, '#FF4500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.successBtnGrad}>
-            <ThemedText style={styles.successBtnText}>View my rides →</ThemedText>
-          </LinearGradient>
-        </Pressable>
-        <Pressable onPress={resetForm} style={[styles.successAlt, { backgroundColor: ACCENT + '12', borderColor: ACCENT + '35' }]}>
-          <IconSymbol name="plus" size={14} color={ACCENT} />
-          <ThemedText style={[styles.successAltText, { color: ACCENT }]}>Post another ride</ThemedText>
-        </Pressable>
-      </View>
+      <ScreenSafeArea
+        backgroundColor={isDark ? NAVY : '#F5F7FA'}
+        topBackgroundColor={isDark ? NAVY : '#F5F7FA'}
+      >
+        <LinearGradient colors={[TEAL + '28', 'transparent']} style={styles.successGlowTop} />
+        <LinearGradient colors={[ACCENT + '12', 'transparent']} style={styles.successGlowSide} />
+
+        <ScrollView
+          contentContainerStyle={[
+            styles.successScroll,
+            {
+              paddingTop: screenHeaderPaddingTop(insets.top) + 20,
+              paddingBottom: insets.bottom + 28,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.successHero}>
+            <View style={[styles.successCheckOuter, { borderColor: TEAL + '40' }]}>
+              <LinearGradient colors={[TEAL + '30', TEAL + '08']} style={styles.successCheckInner}>
+                <IconSymbol name="checkmark.circle.fill" size={44} color={TEAL} />
+              </LinearGradient>
+            </View>
+            <ThemedText style={[styles.successEyebrow, { color: TEAL }]}>Ride posted</ThemedText>
+            <ThemedText style={[styles.successTitle, { color: textPri }]}>You're all set</ThemedText>
+            <ThemedText style={[styles.successSub, { color: textSub }]}>
+              Passengers can find and book your trip on WeShare.
+            </ThemedText>
+          </View>
+
+          <View style={[styles.successCard, { backgroundColor: cardBg, borderColor: hair }]}>
+            <View style={styles.successRoute}>
+              <View style={styles.successRouteStop}>
+                <View style={[styles.successDot, { backgroundColor: TEAL }]} />
+                <ThemedText style={[styles.successPlace, { color: textPri }]} numberOfLines={2}>
+                  {fromText}
+                </ThemedText>
+              </View>
+              <View style={[styles.successRouteArrow, { backgroundColor: inputBg }]}>
+                <IconSymbol name="arrow.forward" size={14} color={textSub} />
+              </View>
+              <View style={styles.successRouteStop}>
+                <View style={[styles.successDot, { backgroundColor: ACCENT }]} />
+                <ThemedText style={[styles.successPlace, { color: textPri }]} numberOfLines={2}>
+                  {toText}
+                </ThemedText>
+              </View>
+            </View>
+
+            <View style={[styles.successDivider, { backgroundColor: hair }]} />
+
+            <View style={styles.successMeta}>
+              <View style={[styles.successMetaIcon, { backgroundColor: ACCENT + '16' }]}>
+                <IconSymbol name="clock.fill" size={14} color={ACCENT} />
+              </View>
+              <View style={styles.successMetaText}>
+                <ThemedText style={[styles.successMetaLabel, { color: textSub }]}>Departure</ThemedText>
+                <ThemedText style={[styles.successMetaValue, { color: textPri }]}>{departureLabel}</ThemedText>
+              </View>
+            </View>
+
+            <View style={[styles.successDivider, { backgroundColor: hair }]} />
+
+            <View style={styles.successMeta}>
+              <View style={[styles.successMetaIcon, { backgroundColor: TEAL + '16' }]}>
+                <IconSymbol name="person.2.fill" size={14} color={TEAL} />
+              </View>
+              <View style={styles.successMetaText}>
+                <ThemedText style={[styles.successMetaLabel, { color: textSub }]}>Seats & price</ThemedText>
+                <ThemedText style={[styles.successMetaValue, { color: textPri }]}>
+                  {seatCount} seat{seatCount !== 1 ? 's' : ''} · RWF {priceEach.toLocaleString()} / seat
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.successActions}>
+            <Pressable onPress={() => router.replace('/my-rides' as any)} style={styles.successBtn}>
+              <LinearGradient colors={[TEAL, '#00a896']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.successBtnGrad}>
+                <IconSymbol name="car.fill" size={17} color="#fff" />
+                <ThemedText style={styles.successBtnText}>View my rides</ThemedText>
+                <IconSymbol name="chevron.right" size={14} color="rgba(255,255,255,0.85)" />
+              </LinearGradient>
+            </Pressable>
+            <Pressable
+              onPress={resetForm}
+              style={[
+                styles.successAlt,
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : NAVY + '06',
+                  borderColor: isDark ? 'rgba(255,255,255,0.14)' : NAVY + '18',
+                },
+              ]}
+            >
+              <IconSymbol name="plus" size={16} color={textPri} />
+              <ThemedText style={[styles.successAltText, { color: textPri }]}>Post another ride</ThemedText>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </ScreenSafeArea>
     );
   }
 
@@ -297,10 +445,16 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
                   done && { backgroundColor: TEAL, borderColor: TEAL },
                   !active && !done && { borderColor: hair },
                 ]}>
-                  {done
-                    ? <IconSymbol name="checkmark" size={10} color="#fff" />
-                    : <ThemedText style={[styles.stepNum, { color: active ? '#fff' : textSub }]}>{i + 1}</ThemedText>
-                  }
+                  {done ? (
+                    <IconSymbol name="checkmark" size={10} color="#fff" />
+                  ) : (
+                    <Text
+                      style={[styles.stepNum, { color: active ? '#fff' : textSub }]}
+                      allowFontScaling={false}
+                    >
+                      {i + 1}
+                    </Text>
+                  )}
                 </View>
                 <ThemedText style={[styles.stepLabel, {
                   color: active ? textPri : done ? TEAL : textSub,
@@ -410,7 +564,7 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               {/* Next */}
               <Pressable onPress={() => { setStep('Details'); setEditing(null); Keyboard.dismiss(); }} disabled={!routeValid} style={[styles.nextBtn, { opacity: routeValid ? 1 : 0.38 }]}>
                 <LinearGradient colors={[ACCENT, '#FF4500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtnGrad}>
-                  <ThemedText style={styles.nextBtnText}>Next — Trip details</ThemedText>
+                  <ThemedText style={styles.nextBtnText}>Next</ThemedText>
                   <IconSymbol name="arrow.right" size={16} color="#fff" />
                 </LinearGradient>
               </Pressable>
@@ -421,7 +575,9 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
           {step === 'Details' && (
             <View style={styles.stepContent}>
               <ThemedText style={[styles.sectionTitle, { color: textPri }]}>Trip details</ThemedText>
-              <ThemedText style={[styles.sectionSub, { color: textSub }]}>When are you leaving and how many seats?</ThemedText>
+              <ThemedText style={[styles.sectionSub, { color: textSub }]}>
+                When are you leaving and how many seats?
+              </ThemedText>
 
               <View style={styles.rowFields}>
                 <View style={[styles.fieldGroup, { flex: 1 }]}>
@@ -447,17 +603,47 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               <View style={styles.rowFields}>
                 <View style={[styles.fieldGroup, { flex: 1 }]}>
                   <ThemedText style={[styles.fieldLabel, { color: textSub }]}>SEATS</ThemedText>
-                  <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair }]}>
+                  <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: seatsErr ? ACCENT + '70' : hair }]}>
                     <IconSymbol name="person.2" size={15} color={textSub} />
-                    <TextInput value={seats} onChangeText={setSeats} placeholder="4" placeholderTextColor={textSub} style={[styles.fieldInput, { color: textPri }]} keyboardType="number-pad" maxLength={2} />
+                    <TextInput
+                      value={seats}
+                      onChangeText={(t) => setSeats(t.replace(/\D/g, ''))}
+                      placeholder="4"
+                      placeholderTextColor={textSub}
+                      style={[styles.fieldInput, { color: textPri }]}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
                   </View>
+                  {seatsErr ? (
+                    <ThemedText style={[styles.fieldHint, { color: ACCENT }]}>{seatsErr}</ThemedText>
+                  ) : (
+                    <ThemedText style={[styles.fieldHint, { color: textSub }]}>
+                      {SEATS_MIN}–{SEATS_MAX} seats
+                    </ThemedText>
+                  )}
                 </View>
                 <View style={[styles.fieldGroup, { flex: 1 }]}>
                   <ThemedText style={[styles.fieldLabel, { color: textSub }]}>PRICE / SEAT</ThemedText>
-                  <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: hair }]}>
+                  <View style={[styles.fieldBox, { backgroundColor: inputBg, borderColor: priceErr ? ACCENT + '70' : hair }]}>
                     <ThemedText style={[styles.currencyLabel, { color: textSub }]}>RWF</ThemedText>
-                    <TextInput value={price} onChangeText={setPrice} placeholder="5000" placeholderTextColor={textSub} style={[styles.fieldInput, { color: textPri }]} keyboardType="number-pad" />
+                    <TextInput
+                      value={price}
+                      onChangeText={(t) => setPrice(t.replace(/\D/g, ''))}
+                      placeholder="5000"
+                      placeholderTextColor={textSub}
+                      style={[styles.fieldInput, { color: textPri }]}
+                      keyboardType="number-pad"
+                      maxLength={5}
+                    />
                   </View>
+                  {priceErr ? (
+                    <ThemedText style={[styles.fieldHint, { color: ACCENT }]}>{priceErr}</ThemedText>
+                  ) : (
+                    <ThemedText style={[styles.fieldHint, { color: textSub }]}>
+                      RWF {PRICE_MIN.toLocaleString()}–{PRICE_MAX.toLocaleString()}
+                    </ThemedText>
+                  )}
                 </View>
               </View>
 
@@ -469,9 +655,21 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               </View>
 
               <View style={styles.navRow}>
-                <Pressable onPress={() => setStep('Route')} style={[styles.backBtn, { backgroundColor: inputBg, borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(8,17,31,0.5)' }]}>
-                  <IconSymbol name="arrow.left" size={14} color={textPri} />
-                  <ThemedText style={[styles.backBtnText, { color: textPri }]}>Back</ThemedText>
+                <Pressable
+                  onPress={() => setStep('Route')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to route"
+                  style={[
+                    styles.backIconBtn,
+                    styles.backIconBtnNav,
+                    styles.backIconBtnProminent,
+                    {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : NAVY + '0C',
+                      borderColor: isDark ? 'rgba(255,255,255,0.38)' : NAVY + '55',
+                    },
+                  ]}
+                >
+                  <IconSymbol name="chevron.left" size={24} color={textPri} />
                 </Pressable>
                 <Pressable onPress={() => setStep('Review')} disabled={!detailsValid} style={[styles.nextBtn, { flex: 1, opacity: detailsValid ? 1 : 0.38 }]}>
                   <LinearGradient colors={[ACCENT, '#FF4500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtnGrad}>
@@ -492,7 +690,7 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               <View style={[styles.reviewCard, { backgroundColor: cardBg, borderColor: hair }]}>
                 {[
                   { icon: 'location.fill', color: TEAL, label: 'Route', value: `${fromText} → ${toText}`, step: 'Route' as Step },
-                  { icon: 'clock.fill', color: ACCENT, label: 'Departure', value: `${departDate} at ${departTime}`, step: 'Details' as Step },
+                  { icon: 'clock.fill', color: ACCENT, label: 'Departure', value: departAt ? formatDepartureFriendly(departAt) : '—', step: 'Details' as Step },
                   { icon: 'person.2.fill', color: TEAL, label: 'Seats & price', value: `${seats} seat${Number(seats) !== 1 ? 's' : ''} · RWF ${Number(price).toLocaleString()} / seat`, step: 'Details' as Step },
                   ...(note.trim() ? [{ icon: 'text.bubble.fill', color: ACCENT, label: 'Note', value: note, step: 'Details' as Step }] : []),
                 ].map((row, i, arr) => (
@@ -522,9 +720,21 @@ function PostRideForm({ router, insets, isDark, hair, textPri, textSub, inputBg,
               ) : null}
 
               <View style={styles.navRow}>
-                <Pressable onPress={() => setStep('Details')} style={[styles.backBtn, { backgroundColor: inputBg, borderColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(8,17,31,0.5)' }]}>
-                  <IconSymbol name="arrow.left" size={14} color={textPri} />
-                  <ThemedText style={[styles.backBtnText, { color: textPri }]}>Back</ThemedText>
+                <Pressable
+                  onPress={() => setStep('Details')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to trip details"
+                  style={[
+                    styles.backIconBtn,
+                    styles.backIconBtnNav,
+                    styles.backIconBtnProminent,
+                    {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : NAVY + '0C',
+                      borderColor: isDark ? 'rgba(255,255,255,0.38)' : NAVY + '55',
+                    },
+                  ]}
+                >
+                  <IconSymbol name="chevron.left" size={24} color={textPri} />
                 </Pressable>
                 <Pressable onPress={onPost} disabled={loading} style={[styles.nextBtn, { flex: 1, opacity: loading ? 0.6 : 1 }]}>
                   <LinearGradient colors={[TEAL, '#00a896']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtnGrad}>
@@ -595,8 +805,22 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: '900', letterSpacing: -0.3, lineHeight: 34 },
   stepBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
   stepItem: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  stepDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
-  stepNum: { fontSize: 11, fontWeight: '900' },
+  stepDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  stepNum: {
+    fontSize: 12,
+    fontWeight: '900',
+    lineHeight: 12,
+    textAlign: 'center',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+  },
   stepLabel: { fontSize: 12 },
   stepLine: { flex: 1, height: 1.5, marginHorizontal: 6 },
   scroll: { paddingHorizontal: 20, paddingTop: 24 },
@@ -626,9 +850,18 @@ const styles = StyleSheet.create({
   currencyLabel: { fontSize: 11, fontWeight: '800' },
   noteBox: { borderRadius: 14, borderWidth: 1, padding: 12, minHeight: 90 },
   noteInput: { fontSize: 14, fontWeight: '600', padding: 0, flex: 1 },
-  navRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 50, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1 },
-  backBtnText: { fontSize: 14, fontWeight: '700' },
+  navRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  fieldHint: { fontSize: 11, fontWeight: '600', lineHeight: 15, marginTop: -2 },
+  backIconBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIconBtnNav: { width: 52, height: 52, borderRadius: 14 },
+  backIconBtnProminent: { borderWidth: 2 },
   pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   pickerSheet: { borderTopWidth: 1, paddingBottom: 24 },
   pickerHeader: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
@@ -645,14 +878,65 @@ const styles = StyleSheet.create({
   editLink: { fontSize: 13, fontWeight: '800' },
   errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12, borderWidth: 1, padding: 12 },
   errorText: { flex: 1, fontSize: 13, fontWeight: '700' },
-  successRoot: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 16 },
-  successBlob: { position: 'absolute', top: 0, left: 0, right: 0, height: 300 },
-  successIcon: { width: 100, height: 100, borderRadius: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  successTitle: { fontSize: 28, fontWeight: '900', textAlign: 'center' },
-  successSub: { fontSize: 14, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
-  successBtn: { borderRadius: 16, overflow: 'hidden', width: '100%', marginTop: 8 },
-  successBtnGrad: { height: 54, alignItems: 'center', justifyContent: 'center' },
+  successGlowTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 220, pointerEvents: 'none' },
+  successGlowSide: { position: 'absolute', top: 120, right: -40, width: 200, height: 200, borderRadius: 100, pointerEvents: 'none' },
+  successScroll: { flexGrow: 1, paddingHorizontal: 24, gap: 28 },
+  successHero: { alignItems: 'center', gap: 10 },
+  successCheckOuter: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1.5,
+    padding: 3,
+    marginBottom: 4,
+  },
+  successCheckInner: {
+    flex: 1,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successEyebrow: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' },
+  successTitle: { fontSize: 30, fontWeight: '900', lineHeight: 38, letterSpacing: -0.4, textAlign: 'center' },
+  successSub: { fontSize: 15, fontWeight: '600', textAlign: 'center', lineHeight: 22, maxWidth: 300 },
+  successCard: { borderRadius: 20, borderWidth: 1, padding: 18, gap: 14 },
+  successRoute: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  successRouteStop: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  successDot: { width: 9, height: 9, borderRadius: 5, marginTop: 5 },
+  successPlace: { flex: 1, fontSize: 15, fontWeight: '800', lineHeight: 20 },
+  successRouteArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successDivider: { height: 1 },
+  successMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  successMetaIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  successMetaText: { flex: 1, gap: 2 },
+  successMetaLabel: { fontSize: 11, fontWeight: '700' },
+  successMetaValue: { fontSize: 14, fontWeight: '800', lineHeight: 19 },
+  successActions: { gap: 12, marginTop: 4 },
+  successBtn: { borderRadius: 16, overflow: 'hidden', width: '100%' },
+  successBtnGrad: {
+    height: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+  },
   successBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  successAlt: { height: 48, width: '100%', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
-  successAltText: { fontSize: 15, fontWeight: '900' },
+  successAlt: {
+    height: 52,
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successAltText: { fontSize: 15, fontWeight: '800' },
 }) as any;

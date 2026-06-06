@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { syncDepositStatus } from "../_shared/deposit-sync.ts";
+import { getPawapayConfig } from "../_shared/pawapay-config.ts";
 import { parsePawapayEntityStatus } from "../_shared/pawapay-parse.ts";
 import { syncPayoutStatus } from "../_shared/payout-sync.ts";
 
@@ -68,17 +69,9 @@ serve(async (req) => {
       );
     }
 
-    let PAWAPAY_TOKEN = (Deno.env.get("PAWAPAY_API_TOKEN") ?? "").trim();
-    if (PAWAPAY_TOKEN.toLowerCase().startsWith("bearer ")) {
-      PAWAPAY_TOKEN = PAWAPAY_TOKEN.slice(7).trim();
-    }
-    const PAWAPAY_URL = (Deno.env.get("PAWAPAY_BASE_URL") ?? "").trim().replace(/\/$/, "");
+    const { baseUrl: PAWAPAY_URL, token: PAWAPAY_TOKEN } = getPawapayConfig();
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    if (!PAWAPAY_TOKEN || !PAWAPAY_URL) {
-      throw new Error("PAWAPAY_API_TOKEN or PAWAPAY_BASE_URL is not configured");
-    }
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 

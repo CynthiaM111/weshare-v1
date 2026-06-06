@@ -197,7 +197,7 @@ export default function RideDetailScreen() {
     if (!ride) return;
     setStartingRide(true);
     try {
-      const coords = await getCoordsForRideGps('start');
+      const coords = await getCoordsForRideGps('start', ride);
       const err = await startRide(ride.id, coords.latitude, coords.longitude);
       if (err) throw new Error(err);
 
@@ -232,7 +232,7 @@ export default function RideDetailScreen() {
     if (!ride) return;
     setCompletingRide(true);
     try {
-      const coords = await getCoordsForRideGps('complete');
+      const coords = await getCoordsForRideGps('complete', ride);
 
       const confirmedBooking = bookings.find(
         b => b.status === 'confirmed' || b.status === 'started'

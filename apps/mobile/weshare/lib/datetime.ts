@@ -1,3 +1,10 @@
+/** True when departure is at least `minMinutes` from now (booking window open). */
+export function canBookBeforeDeparture(departAtISO: string, minMinutes = 30): boolean {
+  const departMs = new Date(departAtISO).getTime();
+  if (Number.isNaN(departMs)) return false;
+  return departMs - Date.now() >= minMinutes * 60_000;
+}
+
 /** Human-readable departure for cards and summaries. */
 export function formatDepartureFriendly(d: Date): string {
   const now = new Date();

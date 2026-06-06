@@ -1,7 +1,10 @@
 import { getProfile, getProfiles, passengerDisplayName, profileFromRow, type UserProfile } from './auth/users';
+import { canBookBeforeDeparture } from './datetime';
 import { createNotification } from './notifications';
 import { getRide, rideFromRow, type Ride } from './rides';
 import { supabase } from './supabase';
+
+export const BOOKING_CUTOFF_MINUTES = 30;
 
 function formatDepartDate(iso: string): string {
   const d = new Date(iso);
@@ -49,6 +52,34 @@ export async function getConfirmedSeatsForRide(rideId: string): Promise<number> 
   return (data ?? []).reduce((sum, row) => sum + row.seats, 0);
 }
 
+async function notifyNewBookingRequest(
+  ride: Ride,
+  passengerId: string,
+  bookingId: string,
+  seats: number
+): Promise<void> {
+  const passenger = await getProfile(passengerId);
+  const passengerName = passengerDisplayName(passenger, passengerId);
+  const route = `${ride.fromShort} → ${ride.toShort}`;
+
+  await createNotification(
+    ride.postedByUserId,
+    'new_booking',
+    'New booking request',
+    `${passengerName} requested ${seats} seat${seats === 1 ? '' : 's'} on your ${route} ride`,
+    ride.id,
+    bookingId
+  );
+  await createNotification(
+    passengerId,
+    'booking_pending',
+    'Booking requested',
+    `Your request for ${route} is pending driver confirmation`,
+    ride.id,
+    bookingId
+  );
+}
+
 export async function createBooking(
   rideId: string,
   passengerId: string,
@@ -57,6 +88,12 @@ export async function createBooking(
   const ride = await getRide(rideId);
   if (!ride) throw new Error('Ride not found');
 
+  if (!canBookBeforeDeparture(ride.departAtISO, BOOKING_CUTOFF_MINUTES)) {
+    throw new Error(
+      `Bookings close ${BOOKING_CUTOFF_MINUTES} minutes before departure. This ride is too soon to book.`
+    );
+  }
+
   const confirmedSeats = await getConfirmedSeatsForRide(rideId);
   if (confirmedSeats >= ride.seats) {
     throw new Error('No seats available');
@@ -64,14 +101,48 @@ export async function createBooking(
 
   const { data: existing, error: existingError } = await supabase
     .from('bookings')
-    .select('id')
+    .select('id, status')
     .eq('ride_id', rideId)
     .eq('passenger_id', passengerId)
-    .neq('status', 'cancelled');
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (existingError) throw new Error(existingError.message);
-  if ((existing ?? []).length > 0) {
-    throw new Error('You already have a booking for this ride');
+
+  if (existing) {
+    if (existing.status === 'confirmed' || existing.status === 'started') {
+      throw new Error('You already have a booking for this ride');
+    }
+    if (existing.status === 'completed') {
+      throw new Error('You already completed this ride');
+    }
+    if (existing.status === 'pending') {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({ seats, status: 'pending' })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return rowToBooking(data);
+    }
+    if (existing.status === 'cancelled') {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({ seats, status: 'pending' })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      const booking = rowToBooking(data);
+      try {
+        await notifyNewBookingRequest(ride, passengerId, booking.id, seats);
+      } catch {
+        /* ignore */
+      }
+      return booking;
+    }
   }
 
   const { data, error } = await supabase
@@ -84,30 +155,10 @@ export async function createBooking(
 
   const booking = rowToBooking(data);
 
-  // Notify the driver and the passenger (best-effort — never block the booking).
   try {
-    const passenger = await getProfile(passengerId);
-    const passengerName = passengerDisplayName(passenger, passengerId);
-    const route = `${ride.fromShort} → ${ride.toShort}`;
-
-    await createNotification(
-      ride.postedByUserId,
-      'new_booking',
-      'New booking request',
-      `${passengerName} requested ${seats} seat${seats === 1 ? '' : 's'} on your ${route} ride`,
-      ride.id,
-      booking.id
-    );
-    await createNotification(
-      passengerId,
-      'booking_pending',
-      'Booking requested',
-      `Your request for ${route} is pending driver confirmation`,
-      ride.id,
-      booking.id
-    );
+    await notifyNewBookingRequest(ride, passengerId, booking.id, seats);
   } catch {
-    // Ignore notification failures.
+    /* ignore */
   }
 
   return booking;

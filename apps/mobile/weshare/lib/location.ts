@@ -1,6 +1,8 @@
 import * as Location from 'expo-location';
 import { Alert, Linking } from 'react-native';
 
+import { isGpsDevModeEnabled } from '@/lib/app-env';
+
 /**
  * Ensures foreground location permission and that device location services are on.
  * Prompts to open Settings when permission was denied and cannot be re-requested in-app.
@@ -56,10 +58,29 @@ export async function getCurrentCoords(): Promise<{ latitude: number; longitude:
   return { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
 }
 
-/** Device GPS for ride start or complete (after permission is granted). */
+export type RideGpsCoords = {
+  fromLat: number | null;
+  fromLng: number | null;
+  toLat: number | null;
+  toLng: number | null;
+};
+
+/**
+ * Coordinates for ride start/complete GPS verification.
+ * Sandbox + EXPO_PUBLIC_GPS_DEV_MODE=true uses ride from/to coords. Production always uses device GPS.
+ */
 export async function getCoordsForRideGps(
-  purpose: 'start' | 'complete'
+  purpose: 'start' | 'complete',
+  ride?: RideGpsCoords
 ): Promise<{ latitude: number; longitude: number }> {
+  if (isGpsDevModeEnabled() && ride) {
+    const lat = purpose === 'start' ? ride.fromLat : ride.toLat;
+    const lng = purpose === 'start' ? ride.fromLng : ride.toLng;
+    if (lat != null && lng != null) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
+
   const allowed = await ensureForegroundLocation(purpose);
   if (!allowed) {
     throw new Error('LOCATION_PERMISSION_DENIED');

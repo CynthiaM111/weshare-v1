@@ -17,7 +17,21 @@ function loadEnvIfPresent(relativePath) {
 
 loadEnvIfPresent('.env');
 loadEnvIfPresent('.env.local');
+loadEnvIfPresent('.env.production');
 loadEnvIfPresent(path.join('app', '.env'));
 
-module.exports = require('./app.json');
+const appJson = require('./app.json');
+const googleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+// Prefer env for Maps keys so real keys stay out of app.json in git.
+if (googleMapsKey) {
+  if (appJson.expo?.ios?.config) {
+    appJson.expo.ios.config.googleMapsApiKey = googleMapsKey;
+  }
+  if (appJson.expo?.android?.config?.googleMaps) {
+    appJson.expo.android.config.googleMaps.apiKey = googleMapsKey;
+  }
+}
+
+module.exports = appJson;
 

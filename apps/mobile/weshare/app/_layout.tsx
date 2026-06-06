@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { SessionExpiredScreen } from '@/components/SessionExpiredScreen';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SessionProvider, useSession } from '@/hooks/use-session';
 
@@ -13,7 +14,7 @@ export const unstable_settings = {
 };
 
 function RootNavigator() {
-  const { loading } = useSession();
+  const { loading, sessionExpired, dismissSessionExpired } = useSession();
   const colorScheme = useColorScheme();
 
   if (loading) {
@@ -32,11 +33,14 @@ function RootNavigator() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="auth" options={{ headerShown: false }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-    </Stack>
+    <>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+      <SessionExpiredScreen visible={sessionExpired} onDismiss={dismissSessionExpired} />
+    </>
   );
 }
 

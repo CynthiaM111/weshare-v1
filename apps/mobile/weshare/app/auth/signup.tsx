@@ -17,10 +17,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthLogo } from '@/components/auth-logo';
 import { ThemedText } from '@/components/themed-text';
+import { useRedirectIfAuthenticated } from '@/hooks/use-redirect-if-authenticated';
+import { useSession } from '@/hooks/use-session';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { normalizeAuthRedirect } from '@/lib/auth/navigation';
 import { upsertProfile } from '@/lib/auth/users';
-import { loadSession } from '@/lib/auth/session';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -31,6 +34,9 @@ const DANGER = '#EF4444';
 export default function SignupScreen() {
   const router = useRouter();
   const { redirect } = useLocalSearchParams<{ redirect?: string }>();
+  const { session } = useSession();
+
+  useRedirectIfAuthenticated({ redirect, allowIncompleteProfile: true });
 
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,7 +49,6 @@ export default function SignupScreen() {
     setError('');
     setLoading(true);
 
-    const session = await loadSession();
     if (!session) {
       setError('Session expired. Please log in again.');
       setLoading(false);
@@ -57,8 +62,11 @@ export default function SignupScreen() {
     });
 
     setLoading(false);
-    if (err) { setError(err); return; }
-    router.replace((redirect ?? '/') as any);
+    if (err) {
+      setError(err);
+      return;
+    }
+    router.replace(normalizeAuthRedirect(redirect) as any);
   }
 
   return (
@@ -70,73 +78,77 @@ export default function SignupScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.inner}>
-
-          {/* Hero */}
-          <View style={styles.hero}>
-            <View style={styles.heroIcon}>
-              <ThemedText style={{ fontSize: 28 }}>👋</ThemedText>
+          <View style={styles.content}>
+            <View style={styles.hero}>
+              <AuthLogo />
+              <ThemedText style={styles.heroTitle}>Enter your name</ThemedText>
+              <ThemedText style={styles.heroSub}>
+                One last step — what should we call you?
+              </ThemedText>
             </View>
-            <ThemedText style={styles.heroTitle}>Welcome to WeShare</ThemedText>
-            <ThemedText style={styles.heroSub}>
-              One last step — what should we call you?
+
+            <View style={styles.card}>
+              <ThemedText style={styles.fieldLabel}>YOUR NAME</ThemedText>
+              <View
+                style={[
+                  styles.inputWrap,
+                  error ? { borderColor: DANGER } : null,
+                ]}
+              >
+                <IconSymbol name="person.fill" size={16} color="rgba(255,255,255,0.35)" />
+                <TextInput
+                  value={fullName}
+                  onChangeText={v => {
+                    setFullName(v);
+                    setError('');
+                  }}
+                  placeholder="Full name"
+                  placeholderTextColor="rgba(255,255,255,0.28)"
+                  style={styles.input}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={onSave}
+                  autoCapitalize="words"
+                />
+                {canSave ? <View style={styles.validDot} /> : null}
+              </View>
+
+              {error ? (
+                <View style={styles.errorRow}>
+                  <IconSymbol name={'exclamationmark.circle.fill' as any} size={13} color={DANGER} />
+                  <ThemedText style={styles.errorText}>{error}</ThemedText>
+                </View>
+              ) : null}
+
+              <Pressable
+                onPress={onSave}
+                disabled={!canSave || loading}
+                style={[styles.btnWrap, { opacity: !canSave || loading ? 0.42 : 1 }]}
+              >
+                <LinearGradient
+                  colors={[ACCENT, '#FF4500']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.btnGrad}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <ThemedText style={styles.btnText}>Let's go</ThemedText>
+                      <IconSymbol name={'arrow.right' as any} size={16} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+            <ThemedText style={styles.note}>
+              Your name is shown to drivers and passengers when you book or post a ride.
             </ThemedText>
           </View>
-
-          {/* Card */}
-          <View style={styles.card}>
-            <ThemedText style={styles.fieldLabel}>YOUR NAME</ThemedText>
-            <View style={[
-              styles.inputWrap,
-              error && { borderColor: DANGER },
-            ]}>
-              <IconSymbol name="person.fill" size={16} color="rgba(255,255,255,0.35)" />
-              <TextInput
-                value={fullName}
-                onChangeText={v => { setFullName(v); setError(''); }}
-                placeholder="Full name"
-                placeholderTextColor="rgba(255,255,255,0.28)"
-                style={styles.input}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={onSave}
-                autoCapitalize="words"
-              />
-              {canSave && (
-                <View style={[styles.validDot, { backgroundColor: TEAL }]} />
-              )}
-            </View>
-
-            {error ? (
-              <View style={styles.errorRow}>
-                <IconSymbol name="exclamationmark.circle.fill" size={13} color={DANGER} />
-                <ThemedText style={styles.errorText}>{error}</ThemedText>
-              </View>
-            ) : null}
-
-            <Pressable
-              onPress={onSave}
-              disabled={!canSave || loading}
-              style={[styles.btn, { opacity: !canSave || loading ? 0.42 : 1 }]}
-            >
-              <LinearGradient
-                colors={[TEAL, '#00a896']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={styles.btnGrad}
-              >
-                {loading
-                  ? <ActivityIndicator color="#fff" />
-                  : <>
-                    <ThemedText style={styles.btnText}>Let's go</ThemedText>
-                    <IconSymbol name="arrow.right" size={16} color="#fff" />
-                  </>
-                }
-              </LinearGradient>
-            </Pressable>
-          </View>
-
-          <ThemedText style={styles.note}>
-            Your name is shown to drivers and passengers when you book or post a ride.
-          </ThemedText>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -146,49 +158,85 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: NAVY },
   kav: { flex: 1 },
-  inner: { flex: 1, paddingHorizontal: 24, paddingTop: 40, gap: 28, justifyContent: 'center' },
-
-  hero: { gap: 10 },
-  heroIcon: {
-    width: 56, height: 56, borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center', justifyContent: 'center',
+  inner: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 4,
+    paddingBottom: 24,
   },
-  heroTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
-  heroSub: { color: 'rgba(255,255,255,0.55)', fontSize: 14, fontWeight: '600', lineHeight: 20 },
-
+  content: { flex: 1, justifyContent: 'center', gap: 28 },
+  hero: { alignItems: 'center', gap: 12 },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '900',
+    lineHeight: 34,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  heroSub: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    textAlign: 'center',
+    maxWidth: 300,
+  },
   card: {
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 20, borderWidth: 1,
+    borderRadius: 20,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
-    padding: 20, gap: 12,
+    padding: 20,
+    gap: 12,
   },
-  fieldLabel: { color: 'rgba(255,255,255,0.40)', fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
-
+  fieldLabel: {
+    color: 'rgba(255,255,255,0.40)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
   inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    height: 54, borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 54,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 14, gap: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 14,
+    gap: 10,
   },
-  input: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '700', padding: 0 },
-  validDot: { width: 8, height: 8, borderRadius: 4 },
-
+  input: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+    padding: 0,
+  },
+  validDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: TEAL,
+  },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  errorText: { color: '#EF4444', fontSize: 13, fontWeight: '700', flex: 1 },
-
-  btn: { borderRadius: 14, overflow: 'hidden', marginTop: 4 },
+  errorText: { color: DANGER, fontSize: 13, fontWeight: '700', flex: 1 },
+  btnWrap: { borderRadius: 14, overflow: 'hidden', width: '100%' },
   btnGrad: {
-    height: 52, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-
+  footer: { paddingTop: 16 },
   note: {
     color: 'rgba(255,255,255,0.25)',
-    fontSize: 12, fontWeight: '600',
-    textAlign: 'center', lineHeight: 18,
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 16,
   },
-}) as any;
+});

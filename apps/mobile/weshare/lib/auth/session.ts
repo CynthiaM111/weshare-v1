@@ -7,6 +7,27 @@ export type AuthSession = {
   phoneE164: string;
 };
 
+type SignOutKind = 'user' | 'expired';
+
+let pendingSignOut: SignOutKind | null = null;
+
+/** Profile → Log out (do not show session-expired screen). */
+export function markUserInitiatedSignOut(): void {
+  pendingSignOut = 'user';
+}
+
+/** Refresh token invalid / expired — show session-expired screen. */
+export function markExpiredSignOut(): void {
+  pendingSignOut = 'expired';
+}
+
+export function takeSignOutKind(): SignOutKind | 'unknown' {
+  if (!pendingSignOut) return 'unknown';
+  const kind = pendingSignOut;
+  pendingSignOut = null;
+  return kind;
+}
+
 export function toAuthSession(session: Session | null): AuthSession | null {
   if (!session?.user) return null;
   return {
@@ -23,5 +44,6 @@ export async function loadSession(): Promise<AuthSession | null> {
 }
 
 export async function clearSession(): Promise<void> {
+  markUserInitiatedSignOut();
   await supabase.auth.signOut();
 }

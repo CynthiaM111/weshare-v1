@@ -15,7 +15,7 @@
       },
       "bundleIdentifier": "com.weshare.app",
       "config": {
-        "googleMapsApiKey": "AIzaSyDvZQja7oqpK6iUX8baYfJAtErs_ZY2jMk"
+        "googleMapsApiKey": ""
       }
     },
     "android": {
@@ -34,7 +34,7 @@
       "predictiveBackGestureEnabled": false,
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDvZQja7oqpK6iUX8baYfJAtErs_ZY2jMk"
+          "apiKey": ""
         }
       }
     },

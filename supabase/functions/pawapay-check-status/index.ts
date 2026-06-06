@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { syncDepositStatus } from "../_shared/deposit-sync.ts";
+import { getPawapayConfig } from "../_shared/pawapay-config.ts";
 import { parsePawapayEntityStatus } from "../_shared/pawapay-parse.ts";
 
 const corsHeaders = {
@@ -14,11 +15,7 @@ serve(async (req) => {
   try {
     const { depositId } = await req.json();
 
-    let PAWAPAY_TOKEN = (Deno.env.get("PAWAPAY_API_TOKEN") ?? "").trim();
-    if (PAWAPAY_TOKEN.toLowerCase().startsWith("bearer ")) {
-      PAWAPAY_TOKEN = PAWAPAY_TOKEN.slice(7).trim();
-    }
-    const PAWAPAY_URL = (Deno.env.get("PAWAPAY_BASE_URL") ?? "").trim().replace(/\/$/, "");
+    const { baseUrl: PAWAPAY_URL, token: PAWAPAY_TOKEN } = getPawapayConfig();
 
     const res = await fetch(`${PAWAPAY_URL}/v2/deposits/${depositId}`, {
       headers: {

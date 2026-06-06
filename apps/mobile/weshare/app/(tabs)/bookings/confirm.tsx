@@ -19,13 +19,15 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
 import { createBooking } from '@/lib/bookings';
+import { computePaymentAmounts } from '@/lib/payment-fees';
 import {
   checkPaymentStatus,
   detectNetwork,
   getPaymentForBooking,
   initiatePayment,
 } from '@/lib/payments';
-import { formatDepartureFriendly } from '@/lib/datetime';
+import { canBookBeforeDeparture, formatDepartureFriendly } from '@/lib/datetime';
+import { BOOKING_CUTOFF_MINUTES } from '@/lib/bookings';
 import { getRide, type Ride } from '@/lib/rides';
 
 const NAVY = '#08111F';
@@ -137,6 +139,7 @@ export default function ConfirmBookingScreen() {
       }
       if (payment?.depositStatus === 'failed') {
         setPaymentError('Your payment could not be processed. Please try again.');
+        setPendingBookingId(null);
         setPayPhase('failed');
         return;
       }
@@ -150,6 +153,7 @@ export default function ConfirmBookingScreen() {
 
       if (status === 'FAILED' || status === 'REJECTED') {
         setPaymentError('Your payment could not be processed. Please try again.');
+        setPendingBookingId(null);
         setPayPhase('failed');
         return;
       }
@@ -170,6 +174,7 @@ export default function ConfirmBookingScreen() {
       await sleep(5000);
     }
 
+    setPendingBookingId(null);
     setPayPhase('timeout');
   }
 
@@ -186,17 +191,14 @@ export default function ConfirmBookingScreen() {
     setPaying(true);
 
     try {
-      const grossAmount = ride.priceRwf * seatCount;
+      const rideFare = ride.priceRwf * seatCount;
       const fullPhone = `250${digits}`;
       const network = detectNetwork(fullPhone);
       const driverId = ride.postedByUserId;
 
-      let bookingId = pendingBookingId;
-      if (!bookingId) {
-        const booking = await createBooking(ride.id, session.userId, seatCount);
-        bookingId = booking.id;
-        setPendingBookingId(bookingId);
-      }
+      const booking = await createBooking(ride.id, session.userId, seatCount);
+      const bookingId = booking.id;
+      setPendingBookingId(bookingId);
 
       setPayPhase('polling');
 
@@ -205,7 +207,7 @@ export default function ConfirmBookingScreen() {
         ride.id,
         session.userId,
         driverId,
-        grossAmount,
+        rideFare,
         fullPhone,
         network
       );
@@ -223,6 +225,7 @@ export default function ConfirmBookingScreen() {
   function resetToForm() {
     setPayPhase('form');
     setPaymentError('');
+    setPendingBookingId(null);
   }
 
   if (sessionLoading || loadingRide || !session) {
@@ -251,11 +254,11 @@ export default function ConfirmBookingScreen() {
   const depart = new Date(ride.departAtISO);
   const maxSeats = Math.max(1, ride.seats);
   const rideFare = ride.priceRwf * seatCount;
-  const serviceFee = Math.round(rideFare * 0.1);
-  const youPay = rideFare;
-  const driverReceives = rideFare - serviceFee;
+  const { serviceFee, depositAmount: youPay, driverReceives } = computePaymentAmounts(rideFare);
   const networkPill = networkPillFromLocal(localPhone.replace(/\D/g, ''));
   const phoneValid = localPhone.replace(/\D/g, '').length === 9;
+  const bookingWindowOpen = canBookBeforeDeparture(ride.departAtISO, BOOKING_CUTOFF_MINUTES);
+  const canPay = phoneValid && bookingWindowOpen && payPhase === 'form';
 
   const header = (
     <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
@@ -522,7 +525,7 @@ export default function ConfirmBookingScreen() {
               </ThemedText>
             </View>
             <View style={styles.breakdownRow}>
-              <ThemedText style={[styles.breakdownLabel, { color: textSub }]}>WeShare fee (10%)</ThemedText>
+              <ThemedText style={[styles.breakdownLabel, { color: textSub }]}>WeShare fee (5%)</ThemedText>
               <ThemedText style={[styles.breakdownValue, { color: textSub }]}>
                 RWF {serviceFee.toLocaleString()}
               </ThemedText>
@@ -549,10 +552,18 @@ export default function ConfirmBookingScreen() {
           </View>
         ) : null}
 
+        {!bookingWindowOpen && payPhase === 'form' ? (
+          <View style={[styles.errorBox, { backgroundColor: '#F59E0B12', borderColor: '#F59E0B30' }]}>
+            <ThemedText style={[styles.errorText, { color: '#B45309' }]}>
+              Bookings close {BOOKING_CUTOFF_MINUTES} minutes before departure. This ride is too soon to book.
+            </ThemedText>
+          </View>
+        ) : null}
+
         <Pressable
           onPress={onPay}
-          disabled={!phoneValid || paying}
-          style={[styles.payBtnWrap, { opacity: !phoneValid || paying ? 0.55 : 1 }]}
+          disabled={!canPay || paying}
+          style={[styles.payBtnWrap, { opacity: !canPay || paying ? 0.55 : 1 }]}
         >
           <LinearGradient
             colors={[ACCENT, '#FF4500']}
@@ -572,7 +583,8 @@ export default function ConfirmBookingScreen() {
         </Pressable>
 
         <ThemedText style={[styles.escrowHint, { color: textSub }]}>
-          Funds are held securely until the driver confirms your booking.
+          RWF {youPay.toLocaleString()} is held in escrow until the ride completes. The driver receives RWF{' '}
+          {driverReceives.toLocaleString()}.
         </ThemedText>
       </ScrollView>
     </ScreenSafeArea>

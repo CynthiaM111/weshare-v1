@@ -1,3 +1,26 @@
 # PawaPay calls this URL directly — no Supabase JWT.
 [functions.pawapay-webhook]
 verify_jwt = false
+
+# Supabase Auth Send SMS Hook — no user JWT; verified via SEND_SMS_HOOK_SECRET.
+[functions.send-sms]
+verify_jwt = false
+
+# PawaPay secrets (Dashboard → Edge Functions → Secrets):
+#   PAWAPAY_ENV=sandbox|production  — flip with supabase/scripts/pawapay-use-*.sh
+#   PAWAPAY_SANDBOX_BASE_URL=https://api.sandbox.pawapay.io
+#   PAWAPAY_SANDBOX_API_TOKEN=<sandbox token>
+#   PAWAPAY_PRODUCTION_BASE_URL=https://api.pawapay.io
+#   PAWAPAY_PRODUCTION_API_TOKEN=<production token>
+# Legacy PAWAPAY_BASE_URL / PAWAPAY_API_TOKEN still work as fallbacks for the active env.
+
+# Phone OTP — Africa's Talking (recommended for Rwanda), not Twilio:
+#   1. Enable Phone provider (Dashboard → Authentication → Providers → Phone).
+#   2. Do NOT configure Twilio — use Send SMS Hook instead.
+#   3. Deploy send-sms, then Dashboard → Authentication → Hooks → Send SMS:
+#        URL: https://<project-ref>.supabase.co/functions/v1/send-sms
+#        Copy the generated SEND_SMS_HOOK_SECRET into Edge Function secrets.
+#   4. Edge secrets: AT_API_KEY, AT_USERNAME (app username; use "sandbox" for AT sandbox),
+#      AT_SENDER_ID (optional alphanumeric sender, e.g. WeShare), SEND_SMS_HOOK_SECRET.
+#   5. Dev fallback: Supabase test numbers +250780000001–006 code 123456 (sandbox app only).
+#   JWT + refresh tokens keep users signed in on device (Uber-style persistence).

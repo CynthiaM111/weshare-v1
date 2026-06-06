@@ -111,7 +111,7 @@ export async function initiatePayment(
   rideId: string,
   passengerId: string,
   driverId: string,
-  grossAmount: number,
+  rideFare: number,
   passengerPhone: string,
   network: string
 ): Promise<{ depositId: string }> {
@@ -121,7 +121,7 @@ export async function initiatePayment(
       rideId,
       passengerId,
       driverId,
-      amount: grossAmount,
+      amount: rideFare,
       phone: passengerPhone,
       network,
     },

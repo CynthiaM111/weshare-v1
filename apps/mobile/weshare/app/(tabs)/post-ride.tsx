@@ -37,6 +37,10 @@ import {
 } from '@/lib/places';
 import { formatDepartureFriendly } from '@/lib/datetime';
 import { createRide } from '@/lib/rides';
+import {
+  getMyDriverVerification,
+  type DriverVerification,
+} from '@/lib/driver-verification';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -112,6 +116,95 @@ export default function PostRideScreen() {
           description="Sign in to share your route and offer seats to passengers across Rwanda."
           redirectPath="/post-ride"
         />
+      </ScreenSafeArea>
+    );
+  }
+
+  return (
+    <PostRideVerificationGate
+      userId={session.userId}
+      router={router}
+      insets={insets}
+      isDark={isDark}
+      hair={hair}
+      textPri={textPri}
+      textSub={textSub}
+      inputBg={inputBg}
+      cardBg={cardBg}
+      session={session}
+    />
+  );
+}
+
+function PostRideVerificationGate({
+  userId,
+  router,
+  insets,
+  isDark,
+  hair,
+  textPri,
+  textSub,
+  inputBg,
+  cardBg,
+  session,
+}: {
+  userId: string;
+  router: ReturnType<typeof useRouter>;
+  insets: ReturnType<typeof useSafeAreaInsets>;
+  isDark: boolean;
+  hair: string;
+  textPri: string;
+  textSub: string;
+  inputBg: string;
+  cardBg: string;
+  session: { userId: string };
+}) {
+  const [verification, setVerification] = useState<DriverVerification | null | undefined>(undefined);
+
+  useFocusEffect(
+    useCallback(() => {
+      getMyDriverVerification(userId)
+        .then(setVerification)
+        .catch(() => setVerification(null));
+    }, [userId])
+  );
+
+  if (verification === undefined) {
+    return (
+      <ScreenSafeArea backgroundColor={isDark ? NAVY : '#F5F7FA'} topBackgroundColor={cardBg}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={TEAL} />
+        </View>
+      </ScreenSafeArea>
+    );
+  }
+
+  if (verification?.status !== 'approved') {
+    const pending = verification?.status === 'pending';
+    return (
+      <ScreenSafeArea backgroundColor={isDark ? NAVY : '#F5F7FA'} topBackgroundColor={cardBg}>
+        <View style={{ flex: 1, padding: 28, justifyContent: 'center', gap: 14 }}>
+          <IconSymbol name="car.fill" size={48} color={TEAL} />
+          <ThemedText style={{ color: textPri, fontSize: 22, fontWeight: '900', textAlign: 'center' }}>
+            {pending ? 'Verification in progress' : 'Become a verified driver'}
+          </ThemedText>
+          <ThemedText style={{ color: textSub, fontSize: 14, fontWeight: '600', textAlign: 'center', lineHeight: 20 }}>
+            {pending
+              ? 'We\'re reviewing your license and car photos. You\'ll be able to post rides once approved.'
+              : 'Upload your driving license and car photo before you can offer rides on WeShare.'}
+          </ThemedText>
+          {!pending ? (
+            <Pressable onPress={() => router.push('/driver-verification' as any)} style={{ borderRadius: 14, overflow: 'hidden' }}>
+              <LinearGradient colors={[TEAL, '#00a896']} style={{ height: 52, alignItems: 'center', justifyContent: 'center' }}>
+                <ThemedText style={{ color: '#fff', fontWeight: '900', fontSize: 15 }}>Start verification</ThemedText>
+              </LinearGradient>
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => router.push('/driver-verification' as any)} style={{ alignItems: 'center', padding: 12 }}>
+              <ThemedText style={{ color: TEAL, fontWeight: '800' }}>View status</ThemedText>
+            </Pressable>
+          )}
+        </View>
       </ScreenSafeArea>
     );
   }

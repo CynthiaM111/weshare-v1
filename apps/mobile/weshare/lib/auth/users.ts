@@ -5,6 +5,7 @@ export type UserProfile = {
   phoneE164: string;
   fullName: string;
   avatarUrl?: string;
+  isSuperAdmin: boolean;
   createdAt: string;
 };
 
@@ -26,6 +27,7 @@ export function profileFromRow(row: {
   phone?: string | null;
   full_name?: string | null;
   avatar_url?: string | null;
+  is_super_admin?: boolean | null;
   created_at: string;
 }): UserProfile {
   return {
@@ -33,6 +35,7 @@ export function profileFromRow(row: {
     phoneE164: row.phone ?? '',
     fullName: row.full_name ?? '',
     avatarUrl: row.avatar_url ?? undefined,
+    isSuperAdmin: row.is_super_admin === true,
     createdAt: row.created_at,
   };
 }

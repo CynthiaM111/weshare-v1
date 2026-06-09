@@ -36,6 +36,7 @@ import {
 } from '@/lib/places';
 import { formatDepartureFriendly } from '@/lib/datetime';
 import { bookingConfirmAuthRedirect } from '@/lib/auth/navigation';
+import { DriverSummaryCard } from '@/components/DriverSummaryCard';
 import { searchRides, type Ride } from '@/lib/rides';
 
 
@@ -781,6 +782,15 @@ function RideCard({ ride, expanded, onToggle, onBook, onManage, isOwn, cardBg, h
 
                 {expanded && (
                     <View style={[styles.resultExpanded, { borderTopColor: hair }]}>
+                        {ride.driver ? (
+                            <DriverSummaryCard
+                                driver={ride.driver}
+                                showContact={false}
+                                textPri={textPri}
+                                textSub={textSub}
+                                hair={hair}
+                            />
+                        ) : null}
                         {ride.note ? (
                             <View style={[styles.resultNote, { backgroundColor: inputBg }]}>
                                 <IconSymbol name="text.bubble.fill" size={12} color={textSub} />

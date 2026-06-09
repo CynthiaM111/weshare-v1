@@ -1,3 +1,4 @@
+import { attachDriversToRides, type RideDriverPublic } from './ride-drivers';
 import { createNotification } from './notifications';
 import { supabase } from './supabase';
 
@@ -24,6 +25,7 @@ export type Ride = {
   note?: string;
   status: 'active' | 'started' | 'completed' | 'cancelled';
   createdAtISO: string;
+  driver?: RideDriverPublic;
 };
 
 export function rideFromRow(row: any): Ride {
@@ -89,10 +91,9 @@ export async function listRides(): Promise<Ride[]> {
   const { data, error } = await query.order('depart_at', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rideFromRow);
+  const rides = (data ?? []).map(rideFromRow);
+  return attachDriversToRides(rides, { requireVerified: true });
 }
-
-/** Removes all rows from `rides` (e.g. clearing local/sample data). Requires appropriate RLS/policy. */
 export async function clearRides(): Promise<void> {
   const { error } = await supabase.from('rides').delete();
   if (error) throw new Error(error.message);
@@ -106,7 +107,9 @@ export async function getRide(id: string): Promise<Ride | null> {
     .single();
 
   if (error || !data) return null;
-  return rideFromRow(data);
+  const ride = rideFromRow(data);
+  const enriched = await attachDriversToRides([ride]);
+  return enriched[0] ?? null;
 }
 
 export async function listMyRides(userId: string): Promise<Ride[]> {
@@ -117,7 +120,8 @@ export async function listMyRides(userId: string): Promise<Ride[]> {
     .order('depart_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rideFromRow);
+  const rides = (data ?? []).map(rideFromRow);
+  return attachDriversToRides(rides, { requireVerified: true });
 }
 
 export async function createRide(
@@ -286,5 +290,6 @@ export async function searchRides(fromQuery: string, toQuery: string): Promise<R
 
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(rideFromRow);
+  const rides = (data ?? []).map(rideFromRow);
+  return attachDriversToRides(rides);
 }

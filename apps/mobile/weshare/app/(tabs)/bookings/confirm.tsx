@@ -30,6 +30,7 @@ import {
 import { canBookBeforeDeparture, formatDepartureFriendly } from '@/lib/datetime';
 import { BOOKING_CUTOFF_MINUTES } from '@/lib/bookings';
 import { getRide, type Ride } from '@/lib/rides';
+import { DriverSummaryCard } from '@/components/DriverSummaryCard';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -311,6 +312,17 @@ export default function ConfirmBookingScreen() {
             <ThemedText style={[styles.tripNoteText, { color: textSub }]} numberOfLines={2}>
               {ride.note}
             </ThemedText>
+          </View>
+        ) : null}
+        {ride.driver ? (
+          <View style={{ marginTop: 12 }}>
+            <DriverSummaryCard
+              driver={ride.driver}
+              showContact={false}
+              textPri={textPri}
+              textSub={textSub}
+              hair={hair}
+            />
           </View>
         ) : null}
       </View>

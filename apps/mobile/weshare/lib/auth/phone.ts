@@ -25,3 +25,10 @@ export function toE164(raw: string, defaultCountry = '250'): string | null {
 export function isValidE164(phone: string): boolean {
   return /^\+[1-9]\d{7,14}$/.test(phone);
 }
+
+/** Supabase Auth test numbers (+250780000001–006) always use OTP 123456. */
+export const SUPABASE_AUTH_TEST_OTP = '123456';
+
+export function isSupabaseAuthTestPhone(phone: string): boolean {
+  return /^\+25078000000[1-6]$/.test(phone.trim());
+}

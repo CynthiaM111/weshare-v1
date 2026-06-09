@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 
@@ -62,6 +63,17 @@ export function Navbar() {
             className="h-5 w-px"
             style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
           />
+          <Link
+            href="/admin/verify-drivers"
+            className="text-[13px] font-semibold transition-colors duration-200"
+            style={{ color: "rgba(255,255,255,0.45)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#00C9B1")}
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "rgba(255,255,255,0.45)")
+            }
+          >
+            Admin
+          </Link>
           <a
             href="#download"
             className="ws-btn-primary"
@@ -133,6 +145,13 @@ export function Navbar() {
               {l.label}
             </a>
           ))}
+          <Link
+            href="/admin/verify-drivers"
+            onClick={() => setOpen(false)}
+            className="rounded-lg px-3 py-3 text-base font-semibold text-teal/80 transition-colors hover:bg-white/5 hover:text-teal"
+          >
+            Admin — verify drivers
+          </Link>
         </div>
       </div>
     </header>

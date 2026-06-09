@@ -41,6 +41,14 @@ const MAPPING = {
   bell: 'notifications-none',
   'list.bullet.rectangle': 'format-list-bulleted',
   'arrow.forward': 'arrow-forward',
+  'checkmark.seal.fill': 'verified',
+  'text.bubble.fill': 'chat-bubble',
+  'phone.fill': 'phone',
+  'camera.fill': 'photo-camera',
+  'shield.fill': 'admin-panel-settings',
+  'doc.text.fill': 'description',
+  'xmark.circle.fill': 'cancel',
+  'checkmark.circle.fill': 'check-circle',
 } as IconMapping;
 
 /**

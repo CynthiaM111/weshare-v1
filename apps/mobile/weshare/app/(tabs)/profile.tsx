@@ -231,6 +231,16 @@ export default function ProfileScreen() {
             icon="car.fill"
             iconBg={TEAL + '16'}
             iconColor={TEAL}
+            label="Driver verification"
+            onPress={() => router.push('/driver-verification' as any)}
+            hair={hair}
+            textPri={textPri}
+            textSub={textSub}
+          />
+          <MenuRow
+            icon="car.fill"
+            iconBg={TEAL + '16'}
+            iconColor={TEAL}
             label="My rides"
             onPress={() => router.push('/my-rides' as any)}
             hair={hair}

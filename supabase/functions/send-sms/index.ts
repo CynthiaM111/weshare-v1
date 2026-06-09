@@ -127,6 +127,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Missing phone or otp in hook payload" }, 400);
     }
 
+    const normalized = normalizePhoneE164(phone);
+    // Supabase Auth test numbers (+250780000001–006) use fixed OTP 123456 in Dashboard.
+    // Hook must succeed without sending SMS.
+    if (/^\+25078000000[1-6]$/.test(normalized)) {
+      return jsonResponse({}, 200);
+    }
+
     if (devBypass) {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,

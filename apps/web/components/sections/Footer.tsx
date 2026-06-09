@@ -1,10 +1,12 @@
+import Link from "next/link";
 import { Logo } from "../Logo";
 
-const LINKS: { label: string; href: string }[] = [
+const LINKS: { label: string; href: string; external?: boolean }[] = [
   { label: "How it works", href: "#how-it-works" },
   { label: "Download", href: "#download" },
   { label: "Team", href: "#team" },
-  { label: "Contact", href: "mailto:contact@weshare.rw" },
+  { label: "Contact", href: "mailto:contact@weshare.rw", external: true },
+  { label: "Verify drivers", href: "/admin/verify-drivers" },
 ];
 
 export function SiteFooter() {
@@ -33,12 +35,21 @@ export function SiteFooter() {
             <ul className="mt-4 flex flex-col gap-3">
               {LINKS.map((l) => (
                 <li key={l.label}>
-                  <a
-                    href={l.href}
-                    className="text-sm font-semibold text-white/80 transition-colors hover:text-white"
-                  >
-                    {l.label}
-                  </a>
+                  {l.external || l.href.startsWith("#") || l.href.startsWith("mailto:") ? (
+                    <a
+                      href={l.href}
+                      className="text-sm font-semibold text-white/80 transition-colors hover:text-white"
+                    >
+                      {l.label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={l.href}
+                      className="text-sm font-semibold text-white/80 transition-colors hover:text-white"
+                    >
+                      {l.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

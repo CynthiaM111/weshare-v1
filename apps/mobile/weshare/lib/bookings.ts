@@ -1,3 +1,4 @@
+import { attachDriversToRides } from './ride-drivers';
 import { getProfile, getProfiles, passengerDisplayName, profileFromRow, type UserProfile } from './auth/users';
 import { canBookBeforeDeparture } from './datetime';
 import { createNotification } from './notifications';
@@ -223,6 +224,15 @@ export async function listMyBookingsWithRides(passengerId: string): Promise<Book
     >;
     results = results.map(b => ({ ...b, ride: b.ride ?? rideById[b.rideId] ?? null }));
   }
+
+  const ridesWithDrivers = await attachDriversToRides(
+    results.map(b => b.ride).filter((r): r is Ride => r != null)
+  );
+  const driverByRideId = Object.fromEntries(ridesWithDrivers.map(r => [r.id, r.driver]));
+  results = results.map(b => ({
+    ...b,
+    ride: b.ride ? { ...b.ride, driver: driverByRideId[b.ride.id] ?? b.ride.driver } : null,
+  }));
 
   return results;
 }

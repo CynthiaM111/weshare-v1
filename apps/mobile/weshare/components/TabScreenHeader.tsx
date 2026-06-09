@@ -47,6 +47,7 @@ type TabScreenHeaderProps = {
   hair: string;
   cardBg: string;
   action?: ReactNode;
+  leftAction?: ReactNode;
 };
 
 export function TabScreenHeader({
@@ -55,6 +56,7 @@ export function TabScreenHeader({
   hair,
   cardBg,
   action,
+  leftAction,
 }: TabScreenHeaderProps) {
   const insets = useSafeAreaInsets();
 
@@ -69,6 +71,7 @@ export function TabScreenHeader({
         },
       ]}
     >
+      {leftAction ? <View style={styles.leading}>{leftAction}</View> : null}
       <ThemedText style={[styles.title, { color: textPri }]} numberOfLines={1}>
         {title}
       </ThemedText>
@@ -102,6 +105,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flexShrink: 0,
+  },
+  leading: {
+    flexShrink: 0,
+    marginRight: -4,
   },
   iconAction: { borderRadius: 20, overflow: 'hidden' },
   iconActionGrad: {

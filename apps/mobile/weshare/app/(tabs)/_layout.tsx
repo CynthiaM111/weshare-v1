@@ -60,6 +60,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="edit-ride/[id]" options={{ href: null }} />
       <Tabs.Screen name="bookings/confirm" options={{ href: null }} />
       <Tabs.Screen name="bookings/pending" options={{ href: null }} />
+      <Tabs.Screen name="driver-verification" options={{ href: null }} />
     </Tabs>
       <NotificationBell />
     </View>

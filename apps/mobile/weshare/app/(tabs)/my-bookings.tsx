@@ -30,6 +30,9 @@ import {
   listMyBookingsWithRides,
   type BookingWithRide,
 } from '@/lib/bookings';
+import { getDriverContact } from '@/lib/ride-drivers';
+import { DriverSummaryCard } from '@/components/DriverSummaryCard';
+import type { RideDriverWithContact } from '@/lib/ride-drivers';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -308,6 +311,22 @@ function BookingCard({
   cardBg: string;
 }) {
   const ride = b.ride;
+  const [driverContact, setDriverContact] = useState<RideDriverWithContact | null>(null);
+
+  useEffect(() => {
+    if (!expanded || !ride?.postedByUserId) {
+      setDriverContact(null);
+      return;
+    }
+    let cancelled = false;
+    getDriverContact(ride.postedByUserId).then(d => {
+      if (!cancelled) setDriverContact(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, ride?.postedByUserId]);
+
   const depart = ride ? new Date(ride.departAtISO) : null;
   const total = ride ? ride.priceRwf * b.seats : null;
   const canCancel = b.status === 'pending' || b.status === 'confirmed' || b.status === 'started';
@@ -386,6 +405,16 @@ function BookingCard({
           {total != null ? ` · RWF ${total.toLocaleString()} paid` : ''}
         </ThemedText>
       </View>
+
+      {expanded && ride?.driver ? (
+        <DriverSummaryCard
+          driver={driverContact ?? ride.driver}
+          showContact={!!driverContact}
+          textPri={textPri}
+          textSub={textSub}
+          hair={hair}
+        />
+      ) : null}
 
       {expanded && canCancel && (
         <Pressable onPress={() => onCancel(b.id)} style={styles.cancelBtn}>

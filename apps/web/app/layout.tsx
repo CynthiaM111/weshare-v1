@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { AdminSiteNotifier } from "@/components/AdminSiteNotifier";
 import "./globals.css";
 
 const inter = Inter({
@@ -66,7 +67,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="bg-navy text-white antialiased font-sans">{children}</body>
+      <body className="bg-navy text-white antialiased font-sans">
+        {children}
+        <AdminSiteNotifier />
+      </body>
     </html>
   );
 }

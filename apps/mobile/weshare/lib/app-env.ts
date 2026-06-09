@@ -20,6 +20,19 @@ export function isGpsDevModeEnabled(): boolean {
 }
 
 /**
+ * In-app photo picker for driver verification (requires native module in standalone builds).
+ * When false, drivers submit vehicle details only until the internal Play build ships.
+ */
+export function isDriverPhotoUploadEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_DRIVER_PHOTOS === 'true';
+}
+
+/** Sandbox / internal: allow verification submit without photos (text fields only). */
+export function canSubmitDriverVerificationWithoutPhotos(): boolean {
+  return isSandboxApp() || isOtpDevBypassEnabled() || !isDriverPhotoUploadEnabled();
+}
+
+/**
  * Internal Play testing: Supabase OTP is shown on-screen instead of SMS (server OTP_DEV_BYPASS).
  * Requires EXPO_PUBLIC_OTP_DEV_BYPASS=true in the build + OTP_DEV_BYPASS=true in Edge secrets.
  */

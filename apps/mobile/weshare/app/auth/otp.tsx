@@ -26,6 +26,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { isOtpDevBypassEnabled } from '@/lib/app-env';
 import { resolvePostLoginRoute } from '@/lib/auth/navigation';
 import { verifyOtp, sendOtp, fetchDevOtpCode } from '@/lib/auth/otp';
+import { isSupabaseAuthTestPhone, SUPABASE_AUTH_TEST_OTP } from '@/lib/auth/phone';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -51,9 +52,17 @@ export default function OtpScreen() {
   const inputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
   const otpDevBypass = isOtpDevBypassEnabled();
+  const isTestPhone = Boolean(phone && isSupabaseAuthTestPhone(phone));
+  const showDevBypassUi = otpDevBypass && !isTestPhone;
 
   useEffect(() => {
-    if (!otpDevBypass || !phone) return;
+    if (isTestPhone) {
+      setDevOtp(SUPABASE_AUTH_TEST_OTP);
+      setDevOtpLoading(false);
+      return;
+    }
+
+    if (!showDevBypassUi || !phone) return;
 
     let cancelled = false;
     setDevOtp(null);
@@ -78,7 +87,7 @@ export default function OtpScreen() {
     return () => {
       cancelled = true;
     };
-  }, [phone, otpDevBypass, resent]);
+  }, [phone, showDevBypassUi, isTestPhone, resent]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -154,21 +163,23 @@ export default function OtpScreen() {
             showsVerticalScrollIndicator={false}
             bounces
           >
-            <View style={[styles.hero, otpDevBypass && styles.heroCompact]}>
-              {!otpDevBypass ? <AuthLogo /> : null}
+            <View style={[styles.hero, (showDevBypassUi || isTestPhone) && styles.heroCompact]}>
+              {!showDevBypassUi && !isTestPhone ? <AuthLogo /> : null}
               <ThemedText style={styles.heroTitle}>Enter the code</ThemedText>
               <ThemedText style={styles.heroSub}>
-                {otpDevBypass
-                  ? 'Use the test code below — no SMS was sent.'
-                  : 'We texted a 6-digit code to '}
-                {!otpDevBypass ? (
+                {isTestPhone
+                  ? 'Supabase test number — use the code below.'
+                  : showDevBypassUi
+                    ? 'Use the test code below — no SMS was sent.'
+                    : 'We texted a 6-digit code to '}
+                {!showDevBypassUi && !isTestPhone ? (
                   <ThemedText style={styles.heroPhone}>{phone}</ThemedText>
                 ) : null}
               </ThemedText>
             </View>
 
-            <View style={[styles.card, otpDevBypass && styles.cardWithDevBanner]}>
-              {otpDevBypass ? (
+            <View style={[styles.card, (showDevBypassUi || isTestPhone) && styles.cardWithDevBanner]}>
+              {showDevBypassUi || isTestPhone ? (
                 <Pressable
                   onPress={() => devOtp && setCode(devOtp)}
                   disabled={!devOtp}
@@ -177,7 +188,9 @@ export default function OtpScreen() {
                     devOtp ? styles.devOtpBannerReady : null,
                   ]}
                 >
-                  <Text style={styles.devOtpLabel}>YOUR TEST CODE</Text>
+                  <Text style={styles.devOtpLabel}>
+                    {isTestPhone ? 'TEST NUMBER CODE' : 'YOUR TEST CODE'}
+                  </Text>
                   {devOtpLoading && !devOtp ? (
                     <ActivityIndicator color={TEAL} style={styles.devOtpSpinner} />
                   ) : (
@@ -192,7 +205,11 @@ export default function OtpScreen() {
                     </View>
                   )}
                   <Text style={styles.devOtpHint}>
-                    {devOtp ? 'Tap to fill · valid 5 min' : 'Generating code…'}
+                    {devOtp
+                      ? isTestPhone
+                        ? 'Tap to fill · always 123456 for +250780000001–006'
+                        : 'Tap to fill · valid 5 min'
+                      : 'Generating code…'}
                   </Text>
                 </Pressable>
               ) : null}

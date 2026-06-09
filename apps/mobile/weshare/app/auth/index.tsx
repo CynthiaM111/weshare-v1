@@ -119,7 +119,7 @@ export default function AuthScreen() {
 
             {isOtpDevBypassEnabled() ? (
               <ThemedText style={styles.hintText}>
-                Internal testing: use your real number — the code appears on the next screen (no SMS).
+                Test numbers +250780000001–006: code 123456. Real numbers: code appears on the next screen (no SMS).
               </ThemedText>
             ) : isSandboxApp() ? (
               <ThemedText style={styles.hintText}>

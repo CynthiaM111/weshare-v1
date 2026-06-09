@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-/** Minimum time the branded splash stays visible (ms). */
-const MIN_SPLASH_MS = 2000;
+/** Minimum time the branded splash stays visible (ms). Covers drive + collapse + brand reveal. */
+const MIN_SPLASH_MS = 4800;
 
 /**
  * Keeps the splash on screen until auth has initialized and a minimum duration

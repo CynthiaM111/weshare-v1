@@ -11,18 +11,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AuthLogo } from '@/components/auth-logo';
 import { ThemedText } from '@/components/themed-text';
 import { useRedirectIfAuthenticated } from '@/hooks/use-redirect-if-authenticated';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { isOtpDevBypassEnabled } from '@/lib/app-env';
 import { resolvePostLoginRoute } from '@/lib/auth/navigation';
-import { verifyOtp, sendOtp } from '@/lib/auth/otp';
+import { verifyOtp, sendOtp, fetchDevOtpCode } from '@/lib/auth/otp';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -43,7 +46,39 @@ export default function OtpScreen() {
   const [error, setError] = useState('');
   const [resent, setResent] = useState(false);
   const [countdown, setCountdown] = useState(30);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [devOtpLoading, setDevOtpLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
+  const otpDevBypass = isOtpDevBypassEnabled();
+
+  useEffect(() => {
+    if (!otpDevBypass || !phone) return;
+
+    let cancelled = false;
+    setDevOtp(null);
+    setDevOtpLoading(true);
+
+    async function pollDevOtp() {
+      for (let i = 0; i < 20 && !cancelled; i++) {
+        const next = await fetchDevOtpCode(phone);
+        if (next) {
+          if (!cancelled) {
+            setDevOtp(next);
+            setDevOtpLoading(false);
+          }
+          return;
+        }
+        await new Promise(r => setTimeout(r, 600));
+      }
+      if (!cancelled) setDevOtpLoading(false);
+    }
+
+    void pollDevOtp();
+    return () => {
+      cancelled = true;
+    };
+  }, [phone, otpDevBypass, resent]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -66,11 +101,11 @@ export default function OtpScreen() {
 
     setLoading(false);
     const next = await resolvePostLoginRoute(redirect);
-    if (next.params) {
+    if (next.pathname === '/auth/signup') {
       router.replace({ pathname: next.pathname, params: next.params } as any);
-    } else {
-      router.replace(next.pathname as any);
+      return;
     }
+    router.replace(next as any);
   }
 
   async function onResend() {
@@ -109,17 +144,59 @@ export default function OtpScreen() {
             <IconSymbol name="chevron.left" size={22} color="#fff" />
           </Pressable>
 
-          <View style={styles.content}>
-            <View style={styles.hero}>
-              <AuthLogo />
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingTop: Math.max(insets.top, 8), paddingBottom: Math.max(insets.bottom, 24) },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces
+          >
+            <View style={[styles.hero, otpDevBypass && styles.heroCompact]}>
+              {!otpDevBypass ? <AuthLogo /> : null}
               <ThemedText style={styles.heroTitle}>Enter the code</ThemedText>
               <ThemedText style={styles.heroSub}>
-                We sent a 6-digit code to{' '}
-                <ThemedText style={styles.heroPhone}>{phone}</ThemedText>
+                {otpDevBypass
+                  ? 'Use the test code below — no SMS was sent.'
+                  : 'We texted a 6-digit code to '}
+                {!otpDevBypass ? (
+                  <ThemedText style={styles.heroPhone}>{phone}</ThemedText>
+                ) : null}
               </ThemedText>
             </View>
 
-            <View style={styles.card}>
+            <View style={[styles.card, otpDevBypass && styles.cardWithDevBanner]}>
+              {otpDevBypass ? (
+                <Pressable
+                  onPress={() => devOtp && setCode(devOtp)}
+                  disabled={!devOtp}
+                  style={[
+                    styles.devOtpBanner,
+                    devOtp ? styles.devOtpBannerReady : null,
+                  ]}
+                >
+                  <Text style={styles.devOtpLabel}>YOUR TEST CODE</Text>
+                  {devOtpLoading && !devOtp ? (
+                    <ActivityIndicator color={TEAL} style={styles.devOtpSpinner} />
+                  ) : (
+                    <View style={styles.devOtpDigitRow}>
+                      {(devOtp ?? '······').split('').map((char, i) => (
+                        <View key={i} style={styles.devOtpDigitBox}>
+                          <Text style={styles.devOtpDigitText} allowFontScaling={false}>
+                            {char}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  <Text style={styles.devOtpHint}>
+                    {devOtp ? 'Tap to fill · valid 5 min' : 'Generating code…'}
+                  </Text>
+                </Pressable>
+              ) : null}
+
               <ThemedText style={styles.fieldLabel}>VERIFICATION CODE</ThemedText>
 
               <TextInput
@@ -217,7 +294,7 @@ export default function OtpScreen() {
                 </ThemedText>
               </Pressable>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -243,8 +320,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: { flex: 1, justifyContent: 'center', gap: 28 },
+  scroll: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    gap: 20,
+  },
   hero: { alignItems: 'center', gap: 12 },
+  heroCompact: { gap: 8, paddingTop: 4 },
   heroTitle: {
     color: '#fff',
     fontSize: 26,
@@ -269,6 +351,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.10)',
     padding: 20,
     gap: 14,
+    overflow: 'visible',
+  },
+  cardWithDevBanner: {
+    paddingTop: 22,
   },
   fieldLabel: {
     color: 'rgba(255,255,255,0.40)',
@@ -314,4 +400,66 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
   resendBtn: { alignItems: 'center', paddingVertical: 2 },
   resendText: { color: 'rgba(255,255,255,0.50)', fontSize: 13, fontWeight: '700' },
+  devOtpBanner: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(0,201,177,0.08)',
+    paddingTop: 20,
+    paddingBottom: 18,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    gap: 12,
+    overflow: 'visible',
+    marginBottom: 2,
+  },
+  devOtpBannerReady: {
+    borderColor: TEAL,
+    backgroundColor: 'rgba(0,201,177,0.14)',
+  },
+  devOtpLabel: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    lineHeight: 18,
+    textAlign: 'center',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+  },
+  devOtpSpinner: { marginVertical: 12 },
+  devOtpDigitRow: {
+    flexDirection: 'row',
+    gap: 5,
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  devOtpDigitBox: {
+    width: 38,
+    minHeight: 52,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,201,177,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  devOtpDigitText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '900',
+    lineHeight: 24,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+  },
+  devOtpHint: {
+    color: 'rgba(255,255,255,0.50)',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
+    textAlign: 'center',
+    paddingTop: 2,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+  },
 });

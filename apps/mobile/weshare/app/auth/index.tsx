@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthLogo } from '@/components/auth-logo';
 import { ThemedText } from '@/components/themed-text';
 import { useRedirectIfAuthenticated } from '@/hooks/use-redirect-if-authenticated';
-import { isSandboxApp } from '@/lib/app-env';
+import { isOtpDevBypassEnabled, isSandboxApp } from '@/lib/app-env';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { normalizeAuthRedirect } from '@/lib/auth/navigation';
 import { sendOtp } from '@/lib/auth/otp';
@@ -79,7 +79,7 @@ export default function AuthScreen() {
               <AuthLogo />
               <ThemedText style={styles.heroTitle}>Sign in to WeShare</ThemedText>
               <ThemedText style={styles.heroSub}>
-                Enter your Rwanda phone number. We'll send a 6-digit code.
+                Enter your Rwanda phone number. We'll text you a 6-digit code.
               </ThemedText>
             </View>
 
@@ -117,7 +117,11 @@ export default function AuthScreen() {
               </View>
             ) : null}
 
-            {isSandboxApp() ? (
+            {isOtpDevBypassEnabled() ? (
+              <ThemedText style={styles.hintText}>
+                Internal testing: use your real number — the code appears on the next screen (no SMS).
+              </ThemedText>
+            ) : isSandboxApp() ? (
               <ThemedText style={styles.hintText}>
                 Test numbers: +250780000001 – +250780000006 (code: 123456)
               </ThemedText>

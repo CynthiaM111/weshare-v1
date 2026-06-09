@@ -22,7 +22,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useRedirectIfAuthenticated } from '@/hooks/use-redirect-if-authenticated';
 import { useSession } from '@/hooks/use-session';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { normalizeAuthRedirect } from '@/lib/auth/navigation';
+import { normalizeAuthRedirect, parseAuthRedirectRoute } from '@/lib/auth/navigation';
 import { upsertProfile } from '@/lib/auth/users';
 
 const NAVY = '#08111F';
@@ -66,7 +66,7 @@ export default function SignupScreen() {
       setError(err);
       return;
     }
-    router.replace(normalizeAuthRedirect(redirect) as any);
+    router.replace(parseAuthRedirectRoute(normalizeAuthRedirect(redirect)) as any);
   }
 
   return (

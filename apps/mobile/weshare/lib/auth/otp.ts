@@ -8,7 +8,12 @@ function friendlyOtpError(message: string): string {
   if (lower.includes('invalid') && lower.includes('phone')) {
     return 'Enter a valid Rwanda mobile number.';
   }
-  if (lower.includes('sms') || lower.includes('provider') || lower.includes('hook')) {
+  if (
+    lower.includes('sms') ||
+    lower.includes('provider') ||
+    lower.includes('twilio') ||
+    lower.includes('hook')
+  ) {
     return 'We could not send the SMS. Try again shortly.';
   }
   if (lower.includes('signup') && lower.includes('disabled')) {
@@ -18,7 +23,7 @@ function friendlyOtpError(message: string): string {
 }
 
 /**
- * Sends a real SMS OTP via Supabase Auth (Twilio/MessageBird in production).
+ * Sends an SMS OTP via Supabase Auth → Send SMS Hook → Africa's Talking.
  * Returns null on success, or an error message string.
  */
 export async function sendOtp(phoneE164: string): Promise<string | null> {
@@ -48,4 +53,14 @@ export async function verifyOtp(phoneE164: string, token: string): Promise<strin
     return 'Invalid or expired code. Please try again.';
   }
   return friendlyOtpError(error.message);
+}
+
+/** Fetch OTP stored by send-sms hook when internal dev bypass is active. */
+export async function fetchDevOtpCode(phoneE164: string): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('dev-otp-peek', {
+    body: { phone: phoneE164 },
+  });
+  if (error) return null;
+  const otp = (data as { otp?: string | null } | null)?.otp;
+  return otp && /^\d{6}$/.test(otp) ? otp : null;
 }

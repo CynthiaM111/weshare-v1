@@ -7,6 +7,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+/**
+ * Tab access control:
+ * - index (Find Ride): public — no auth in this layout
+ * - post-ride, my-rides, my-bookings, profile: AuthGate on each screen
+ */
 export default function TabsLayout() {
   const scheme = useColorScheme();
   const c = Colors[scheme];

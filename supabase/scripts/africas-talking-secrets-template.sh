@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Store Africa's Talking credentials for the send-sms Auth Hook.
 #
-# Usage:
-#   export AT_USERNAME="sandbox"          # or your production app username
-#   export AT_API_KEY="your_at_api_key"
-#   export AT_SENDER_ID="WeShare"         # optional; register sender ID for production RW
-#   export SEND_SMS_HOOK_SECRET="v1,whsec_..."  # from Supabase Auth → Hooks → Send SMS
+# Usage (sandbox — until AT production approval):
+#   export AT_USERNAME="sandbox"
+#   export AT_API_KEY="your_sandbox_api_key"   # Sandbox tab in AT dashboard
+#   export SEND_SMS_HOOK_SECRET="v1,whsec_..."  # Supabase Auth → Hooks → Send SMS
 #   bash supabase/scripts/africas-talking-secrets-template.sh
 #
+# Production (after approval): set AT_USERNAME to your app username + production API key.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 unset SUPABASE_ACCESS_TOKEN

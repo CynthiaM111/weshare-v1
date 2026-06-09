@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
-import { normalizeAuthRedirect } from '@/lib/auth/navigation';
+import { normalizeAuthRedirect, parseAuthRedirectRoute } from '@/lib/auth/navigation';
 import { useSession } from '@/hooks/use-session';
 
 type Options = {
@@ -31,6 +31,6 @@ export function useRedirectIfAuthenticated({
       return;
     }
 
-    router.replace(dest as any);
+    router.replace(parseAuthRedirectRoute(dest) as any);
   }, [loading, session, profile?.fullName, dest, allowIncompleteProfile, router]);
 }

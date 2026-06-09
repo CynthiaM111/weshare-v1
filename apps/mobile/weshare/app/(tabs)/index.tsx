@@ -1,7 +1,7 @@
 /**
  * WeShare — Find Ride (Home)
- * Map-first. Low bottom sheet so map stays visible while typing.
- * GPS-locked fields — must pick from suggestion to confirm a place.
+ * Public: search, view cards, expand details — no session required.
+ * Auth only when the user taps "Book this ride" (→ /auth with booking confirm redirect).
  */
 
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,6 +35,7 @@ import {
     type PlaceSuggestion,
 } from '@/lib/places';
 import { formatDepartureFriendly } from '@/lib/datetime';
+import { bookingConfirmAuthRedirect } from '@/lib/auth/navigation';
 import { searchRides, type Ride } from '@/lib/rides';
 
 
@@ -302,9 +303,12 @@ export default function FindRideScreen() {
     }
 
     function onBookRide(rideId: string) {
-        const redirect = `/bookings/confirm?rideId=${encodeURIComponent(rideId)}`;
-        if (!session) { router.push({ pathname: '/auth', params: { redirect } }); return; }
-        router.push(redirect as any);
+        const redirect = bookingConfirmAuthRedirect(rideId);
+        if (!session) {
+            router.push({ pathname: '/auth', params: { redirect } });
+            return;
+        }
+        router.push({ pathname: '/bookings/confirm', params: { rideId } });
     }
 
     function dismissAll() {

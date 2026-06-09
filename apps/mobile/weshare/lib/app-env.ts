@@ -18,3 +18,11 @@ export function isGpsDevModeEnabled(): boolean {
   if (isProductionApp()) return false;
   return process.env.EXPO_PUBLIC_GPS_DEV_MODE === 'true';
 }
+
+/**
+ * Internal Play testing: Supabase OTP is shown on-screen instead of SMS (server OTP_DEV_BYPASS).
+ * Requires EXPO_PUBLIC_OTP_DEV_BYPASS=true in the build + OTP_DEV_BYPASS=true in Edge secrets.
+ */
+export function isOtpDevBypassEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_OTP_DEV_BYPASS === 'true';
+}

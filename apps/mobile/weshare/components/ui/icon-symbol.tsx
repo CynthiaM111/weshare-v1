@@ -22,15 +22,17 @@ const MAPPING = {
   'chevron.down': 'keyboard-arrow-down',
   'chevron.up': 'keyboard-arrow-up',
   plus: 'add',
+  'plus.circle': 'add-circle',
+  'plus.circle.fill': 'add-circle',
+  person: 'person',
   'person.fill': 'person',
   'person.2.fill': 'groups',
+  ticket: 'confirmation-number',
   pencil: 'edit',
   'clock.fill': 'schedule',
   magnifyingglass: 'search',
   'car.fill': 'directions-car',
   'bus.fill': 'directions-bus',
-  'plus.circle.fill': 'add-circle',
-  'clock.fill': 'schedule',
   'location.fill': 'location-on',
   'person.crop.circle': 'account-circle',
   'gearshape.fill': 'settings',
@@ -58,5 +60,6 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  const materialName = MAPPING[name] ?? 'help-outline';
+  return <MaterialIcons color={color} size={size} name={materialName} style={style} />;
 }

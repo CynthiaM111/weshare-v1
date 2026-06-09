@@ -19,6 +19,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
 import { createBooking } from '@/lib/bookings';
+import { bookingConfirmAuthRedirect } from '@/lib/auth/navigation';
 import { computePaymentAmounts } from '@/lib/payment-fees';
 import {
   checkPaymentStatus,
@@ -95,7 +96,7 @@ export default function ConfirmBookingScreen() {
       router.replace({
         pathname: '/auth',
         params: {
-          redirect: `/bookings/confirm?rideId=${encodeURIComponent(rideId)}`,
+          redirect: bookingConfirmAuthRedirect(rideId),
         },
       });
     }

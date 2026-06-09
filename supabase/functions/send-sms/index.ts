@@ -1,11 +1,15 @@
 /**
- * Supabase Auth Send SMS Hook → Africa's Talking (Rwanda / East Africa).
- * Supabase generates the OTP; this function delivers it via AT Bulk SMS API.
- *
- * Dashboard: Authentication → Hooks → Send SMS → this function URL.
- * Secrets: SEND_SMS_HOOK_SECRET, AT_API_KEY, AT_USERNAME, AT_SENDER_ID (optional).
+ * Supabase Auth Send SMS Hook → Africa's Talking (or dev bypass for internal testing).
+ * Supabase generates the OTP; this function delivers it via AT or stores it for in-app display.
  */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
+
+import {
+  isOtpDevBypassEnabled,
+  normalizePhoneE164,
+  storeDevOtpDisplay,
+} from "../_shared/otp-dev-bypass.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,12 +22,6 @@ function jsonResponse(body: Record<string, unknown>, status: number): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-}
-
-function normalizePhone(phone: string): string {
-  let p = phone.trim();
-  if (!p.startsWith("+")) p = `+${p.replace(/\D/g, "")}`;
-  return p;
 }
 
 function atBaseUrl(username: string): string {
@@ -42,10 +40,10 @@ async function sendViaAfricasTalking(
 ): Promise<{ ok: boolean; detail: string }> {
   const body = new URLSearchParams({
     username,
-    to: normalizePhone(phone),
+    to: normalizePhoneE164(phone),
     message,
   });
-  if (senderId?.trim()) {
+  if (senderId?.trim() && username !== "sandbox") {
     body.set("from", senderId.trim());
   }
 
@@ -100,6 +98,7 @@ Deno.serve(async (req) => {
   }
 
   const hookSecretRaw = (Deno.env.get("SEND_SMS_HOOK_SECRET") ?? "").trim();
+  const devBypass = isOtpDevBypassEnabled();
   const atUsername = (Deno.env.get("AT_USERNAME") ?? "").trim();
   const atApiKey = (Deno.env.get("AT_API_KEY") ?? "").trim();
   const atSenderId = (Deno.env.get("AT_SENDER_ID") ?? "WeShare").trim();
@@ -107,7 +106,7 @@ Deno.serve(async (req) => {
   if (!hookSecretRaw) {
     return jsonResponse({ error: "SEND_SMS_HOOK_SECRET is not configured" }, 500);
   }
-  if (!atUsername || !atApiKey) {
+  if (!devBypass && (!atUsername || !atApiKey)) {
     return jsonResponse({ error: "AT_USERNAME or AT_API_KEY is not configured" }, 500);
   }
 
@@ -126,6 +125,15 @@ Deno.serve(async (req) => {
     const otp = sms?.otp;
     if (!phone || !otp) {
       return jsonResponse({ error: "Missing phone or otp in hook payload" }, 400);
+    }
+
+    if (devBypass) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      await storeDevOtpDisplay(supabase, phone, otp);
+      return jsonResponse({}, 200);
     }
 
     const message = `Your WeShare verification code is ${otp}. It expires in a few minutes.`;

@@ -2,8 +2,11 @@
 [functions.pawapay-webhook]
 verify_jwt = false
 
-# Supabase Auth Send SMS Hook — no user JWT; verified via SEND_SMS_HOOK_SECRET.
+# Supabase Auth Send SMS Hook → Africa's Talking (no user JWT).
 [functions.send-sms]
+verify_jwt = false
+
+[functions.dev-otp-peek]
 verify_jwt = false
 
 # PawaPay secrets (Dashboard → Edge Functions → Secrets):
@@ -14,13 +17,37 @@ verify_jwt = false
 #   PAWAPAY_PRODUCTION_API_TOKEN=<production token>
 # Legacy PAWAPAY_BASE_URL / PAWAPAY_API_TOKEN still work as fallbacks for the active env.
 
-# Phone OTP — Africa's Talking (recommended for Rwanda), not Twilio:
-#   1. Enable Phone provider (Dashboard → Authentication → Providers → Phone).
-#   2. Do NOT configure Twilio — use Send SMS Hook instead.
-#   3. Deploy send-sms, then Dashboard → Authentication → Hooks → Send SMS:
+# Phone OTP — Africa's Talking via Send SMS Hook (no Twilio):
+#
+# AFRICA'S TALKING SANDBOX (until production approval):
+#   1. Dashboard → create app → use Sandbox credentials tab.
+#   2. AT_USERNAME must be exactly: sandbox
+#   3. AT_API_KEY = sandbox API key (not production key).
+#   4. Sandbox → SMS → add each test phone as a recipient (+250…).
+#   5. Sender header shows "AFRICASTKNG" in sandbox — normal; custom IDs need production approval.
+#
+# AFRICA'S TALKING PRODUCTION (after approval):
+#   1. Switch AT_USERNAME to your app username (not "sandbox").
+#   2. Use production API key.
+#   3. Register alphanumeric sender ID "WeShare" for Rwanda (Dashboard → SMS → Sender IDs).
+#   4. Set AT_SENDER_ID=WeShare in Edge secrets — hook sends from=WeShare on production API.
+#
+# INTERNAL PLAY TESTING (production PawaPay + real phones, no AT SMS yet):
+#   bash supabase/scripts/internal-testing-enable.sh
+#   Sets OTP_DEV_BYPASS=true + PAWAPAY_ENV=production.
+#   Mobile: eas build --profile internal (EXPO_PUBLIC_OTP_DEV_BYPASS=true).
+#   OTP appears on-screen; verify still via Supabase Auth.
+#   Before launch: bash supabase/scripts/internal-testing-disable.sh
+#
+# SUPABASE (Dashboard → Authentication)
+#   1. Providers → Phone → Enable (leave Twilio / built-in SMS provider empty).
+#   2. Hooks → Send SMS → ENABLE:
 #        URL: https://<project-ref>.supabase.co/functions/v1/send-sms
-#        Copy the generated SEND_SMS_HOOK_SECRET into Edge Function secrets.
-#   4. Edge secrets: AT_API_KEY, AT_USERNAME (app username; use "sandbox" for AT sandbox),
-#      AT_SENDER_ID (optional alphanumeric sender, e.g. WeShare), SEND_SMS_HOOK_SECRET.
-#   5. Dev fallback: Supabase test numbers +250780000001–006 code 123456 (sandbox app only).
-#   JWT + refresh tokens keep users signed in on device (Uber-style persistence).
+#      Copy SEND_SMS_HOOK_SECRET into Edge Function secrets (see script below).
+#   3. Edge secrets: AT_API_KEY, AT_USERNAME, AT_SENDER_ID, SEND_SMS_HOOK_SECRET
+#      bash supabase/scripts/africas-talking-secrets-template.sh
+#   4. Deploy: npx supabase functions deploy send-sms
+#   5. Dev test numbers (no SMS cost): Phone provider → add +250780000001–006, OTP 123456.
+#      Remove before public launch.
+#
+# MOBILE — signInWithOtp / verifyOtp (channel: sms). No Twilio env vars in the app.

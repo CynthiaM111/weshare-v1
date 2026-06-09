@@ -19,6 +19,15 @@
         "EXPO_PUBLIC_GPS_DEV_MODE": "false"
       }
     },
+    "internal": {
+      "distribution": "internal",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_GPS_DEV_MODE": "false",
+        "EXPO_PUBLIC_OTP_DEV_BYPASS": "true"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {
@@ -28,6 +37,11 @@
     }
   },
   "submit": {
+    "internal": {
+      "android": {
+        "track": "internal"
+      }
+    },
     "production": {
       "android": {
         "track": "internal"

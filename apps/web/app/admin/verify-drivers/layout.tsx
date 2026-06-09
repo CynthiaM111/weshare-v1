@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Verify drivers — WeShare Admin",
+  title: "WeShare Admin",
   robots: { index: false, follow: false },
 };
 

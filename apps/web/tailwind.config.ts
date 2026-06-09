@@ -10,6 +10,7 @@ const config: Config = {
       colors: {
         navy: {
           DEFAULT: "#08111F",
+          2: "#0E1E35",
           900: "#08111F",
           800: "#0E1E35",
         },

@@ -21,6 +21,7 @@ import { useSession } from '@/hooks/use-session';
 import { createBooking } from '@/lib/bookings';
 import { bookingConfirmAuthRedirect } from '@/lib/auth/navigation';
 import { computePaymentAmounts } from '@/lib/payment-fees';
+import { logAppError, logPaymentMetric } from '@/lib/metrics';
 import {
   checkPaymentStatus,
   detectNetwork,
@@ -129,17 +130,42 @@ export default function ConfirmBookingScreen() {
     });
   }
 
-  async function pollUntilFinal(depositId: string, bookingId: string) {
+  async function pollUntilFinal(
+    depositId: string,
+    bookingId: string,
+    network: string,
+    amountRwf: number,
+    startedAt: number
+  ) {
     const deadline = Date.now() + 180_000;
     while (Date.now() < deadline) {
       if (pollCancelledRef.current) return;
 
       const payment = await getPaymentForBooking(bookingId);
       if (payment?.depositStatus === 'completed') {
+        logPaymentMetric({
+          phase: 'completed',
+          bookingId,
+          depositId,
+          network,
+          amountRwf,
+          durationMs: Date.now() - startedAt,
+          userId: session?.userId ?? null,
+        });
         goToBookingsAfterPayment(bookingId);
         return;
       }
       if (payment?.depositStatus === 'failed') {
+        logPaymentMetric({
+          phase: 'failed',
+          bookingId,
+          depositId,
+          network,
+          amountRwf,
+          durationMs: Date.now() - startedAt,
+          userId: session?.userId ?? null,
+          errorMessage: 'Deposit failed in database',
+        });
         setPaymentError('Your payment could not be processed. Please try again.');
         setPendingBookingId(null);
         setPayPhase('failed');
@@ -149,11 +175,30 @@ export default function ConfirmBookingScreen() {
       const { status } = await checkPaymentStatus(depositId);
 
       if (status === 'COMPLETED') {
+        logPaymentMetric({
+          phase: 'completed',
+          bookingId,
+          depositId,
+          network,
+          amountRwf,
+          durationMs: Date.now() - startedAt,
+          userId: session?.userId ?? null,
+        });
         goToBookingsAfterPayment(bookingId);
         return;
       }
 
       if (status === 'FAILED' || status === 'REJECTED') {
+        logPaymentMetric({
+          phase: 'failed',
+          bookingId,
+          depositId,
+          network,
+          amountRwf,
+          durationMs: Date.now() - startedAt,
+          userId: session?.userId ?? null,
+          errorMessage: status,
+        });
         setPaymentError('Your payment could not be processed. Please try again.');
         setPendingBookingId(null);
         setPayPhase('failed');
@@ -176,6 +221,16 @@ export default function ConfirmBookingScreen() {
       await sleep(5000);
     }
 
+    logPaymentMetric({
+      phase: 'timeout',
+      bookingId,
+      depositId,
+      network,
+      amountRwf,
+      durationMs: Date.now() - startedAt,
+      userId: session?.userId ?? null,
+      errorMessage: 'Polling exceeded 180s',
+    });
     setPendingBookingId(null);
     setPayPhase('timeout');
   }
@@ -191,6 +246,7 @@ export default function ConfirmBookingScreen() {
 
     setPaymentError('');
     setPaying(true);
+    const paymentStartedAt = Date.now();
 
     try {
       const rideFare = ride.priceRwf * seatCount;
@@ -214,9 +270,25 @@ export default function ConfirmBookingScreen() {
         network
       );
 
-      await pollUntilFinal(depositId, bookingId);
+      logPaymentMetric({
+        phase: 'initiated',
+        bookingId,
+        depositId,
+        network,
+        amountRwf: rideFare,
+        userId: session.userId,
+      });
+
+      await pollUntilFinal(depositId, bookingId, network, rideFare, paymentStartedAt);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Payment failed';
+      logPaymentMetric({
+        phase: 'failed',
+        userId: session.userId,
+        durationMs: Date.now() - paymentStartedAt,
+        errorMessage: msg,
+      });
+      logAppError({ context: 'payment', message: msg, userId: session.userId });
       setPaymentError(msg);
       setPayPhase('failed');
     } finally {

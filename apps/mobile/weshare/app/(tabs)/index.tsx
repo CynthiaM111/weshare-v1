@@ -37,6 +37,7 @@ import {
 import { formatDepartureFriendly } from '@/lib/datetime';
 import { bookingConfirmAuthRedirect } from '@/lib/auth/navigation';
 import { DriverSummaryCard } from '@/components/DriverSummaryCard';
+import { logAppError, logBookTapMetric, logSearchMetric } from '@/lib/metrics';
 import { searchRides, type Ride } from '@/lib/rides';
 
 
@@ -285,17 +286,37 @@ export default function FindRideScreen() {
         if (!canSearch || searching) return;
         setSearching(true);
         Keyboard.dismiss();
+        const fromQuery = fromText.trim();
+        const toQuery = toText.trim();
+        const startedAt = Date.now();
 
         try {
-            const rides = await searchRides(fromText.trim(), toText.trim());
+            const rides = await searchRides(fromQuery, toQuery);
             const filtered = session
                 ? rides.filter(r => r.postedByUserId !== session.userId)
                 : rides;
+            logSearchMetric({
+                fromQuery,
+                toQuery,
+                resultCount: filtered.length,
+                durationMs: Date.now() - startedAt,
+                userId: session?.userId ?? null,
+            });
             setResults(filtered);
             setSearched(true);
             setExpandedId(null);
             animateSheet(SHEET_RESULTS, 'results');
-        } catch {
+        } catch (e) {
+            const message = e instanceof Error ? e.message : 'Search failed';
+            logSearchMetric({
+                fromQuery,
+                toQuery,
+                resultCount: 0,
+                durationMs: Date.now() - startedAt,
+                userId: session?.userId ?? null,
+                errorMessage: message,
+            });
+            logAppError({ context: 'search', message, userId: session?.userId ?? null });
             setResults([]); setSearched(true);
             animateSheet(SHEET_RESULTS, 'results');
         } finally {
@@ -304,6 +325,13 @@ export default function FindRideScreen() {
     }
 
     function onBookRide(rideId: string) {
+        logBookTapMetric({
+            rideId,
+            fromQuery: fromText.trim(),
+            toQuery: toText.trim(),
+            resultCount: results.length,
+            userId: session?.userId ?? null,
+        });
         const redirect = bookingConfirmAuthRedirect(rideId);
         if (!session) {
             router.push({ pathname: '/auth', params: { redirect } });

@@ -1,11 +1,11 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
+type IconMapping = Record<string, ComponentProps<typeof MaterialIcons>['name']>;
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
@@ -26,30 +26,44 @@ const MAPPING = {
   'plus.circle.fill': 'add-circle',
   person: 'person',
   'person.fill': 'person',
+  'person.2': 'people',
   'person.2.fill': 'groups',
+  'person.badge.plus': 'person-add',
+  'person.crop.circle': 'account-circle',
+  'person.crop.circle.badge.plus': 'person-add-alt-1',
   ticket: 'confirmation-number',
   pencil: 'edit',
+  clock: 'schedule',
   'clock.fill': 'schedule',
+  calendar: 'event',
   magnifyingglass: 'search',
+  mappin: 'place',
   'car.fill': 'directions-car',
   'bus.fill': 'directions-bus',
   'location.fill': 'location-on',
-  'person.crop.circle': 'account-circle',
   'gearshape.fill': 'settings',
   'circle.grid.2x2.fill': 'apps',
   'bell.fill': 'notifications',
   bell: 'notifications-none',
   'list.bullet.rectangle': 'format-list-bulleted',
+  'arrow.left': 'arrow-back',
+  'arrow.right': 'arrow-forward',
   'arrow.forward': 'arrow-forward',
+  'arrow.up.arrow.down': 'swap-vert',
+  'arrow.up.left': 'north-west',
+  checkmark: 'check',
   'checkmark.seal.fill': 'verified',
+  'checkmark.circle.fill': 'check-circle',
+  'xmark.circle.fill': 'cancel',
+  'exclamationmark.circle.fill': 'error',
+  'exclamationmark.triangle.fill': 'warning',
   'text.bubble.fill': 'chat-bubble',
   'phone.fill': 'phone',
   'camera.fill': 'photo-camera',
   'shield.fill': 'admin-panel-settings',
   'doc.text.fill': 'description',
-  'xmark.circle.fill': 'cancel',
-  'checkmark.circle.fill': 'check-circle',
-} as IconMapping;
+  'lock.open.fill': 'lock-open',
+} as const satisfies IconMapping;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.

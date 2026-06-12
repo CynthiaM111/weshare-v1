@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { syncDepositStatus } from "../_shared/deposit-sync.ts";
 import { computePaymentAmounts } from "../_shared/payment-fees.ts";
 import { getPawapayConfig } from "../_shared/pawapay-config.ts";
+import { shouldMockMoMoPayment } from "../_shared/internal-test-phones.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,6 +88,21 @@ serve(async (req) => {
     });
 
     if (dbError) throw new Error(`DB error: ${dbError.message}`);
+
+    if (shouldMockMoMoPayment(phone)) {
+      await syncDepositStatus(supabase, depositId, "COMPLETED");
+      return new Response(
+        JSON.stringify({
+          depositId,
+          status: "COMPLETED",
+          grossAmount,
+          serviceFee,
+          netAmount,
+          mocked: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const requestBody = {
       depositId,

@@ -35,7 +35,8 @@ verify_jwt = false
 # INTERNAL PLAY TESTING (production PawaPay + real phones, no AT SMS yet):
 #   bash supabase/scripts/internal-testing-enable.sh
 #   Sets OTP_DEV_BYPASS=true + PAWAPAY_ENV=production.
-#   Mobile: eas build --profile internal (EXPO_PUBLIC_OTP_DEV_BYPASS=true).
+#   MoMo mock: +250780000001–006 pay/payout instantly (no PIN). Real numbers use production PawaPay + PIN.
+#   Mobile: eas build --profile internal (EXPO_PUBLIC_OTP_DEV_BYPASS=true) → GPS bypass + OTP on screen.
 #   OTP appears on-screen; verify still via Supabase Auth.
 #   Before launch: bash supabase/scripts/internal-testing-disable.sh
 #

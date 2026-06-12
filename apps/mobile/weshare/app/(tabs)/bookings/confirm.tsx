@@ -19,7 +19,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
 import { createBooking } from '@/lib/bookings';
+import { isOtpDevBypassEnabled } from '@/lib/app-env';
 import { bookingConfirmAuthRedirect } from '@/lib/auth/navigation';
+import { isSupabaseAuthTestPhone } from '@/lib/auth/phone';
 import { computePaymentAmounts } from '@/lib/payment-fees';
 import { logAppError, logPaymentMetric } from '@/lib/metrics';
 import {
@@ -333,6 +335,10 @@ export default function ConfirmBookingScreen() {
   const phoneValid = localPhone.replace(/\D/g, '').length === 9;
   const bookingWindowOpen = canBookBeforeDeparture(ride.departAtISO, BOOKING_CUTOFF_MINUTES);
   const canPay = phoneValid && bookingWindowOpen && payPhase === 'form';
+  const internalTestMoMo =
+    isOtpDevBypassEnabled() &&
+    phoneValid &&
+    isSupabaseAuthTestPhone(`+250${localPhone.replace(/\D/g, '')}`);
 
   const header = (
     <View style={[styles.header, { paddingTop: screenHeaderPaddingTop(insets.top), borderBottomColor: hair, backgroundColor: cardBg }]}>
@@ -568,7 +574,9 @@ export default function ConfirmBookingScreen() {
         <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: hair }]}>
           <ThemedText style={[styles.sectionTitle, { color: textPri }]}>Mobile money</ThemedText>
           <ThemedText style={[styles.sectionSub, { color: textSub }]}>
-            Pay with the number registered on your MTN or Airtel wallet.
+            {internalTestMoMo
+              ? 'Internal test number — payment completes instantly (no MoMo PIN).'
+              : 'Pay with the number registered on your MTN or Airtel wallet.'}
           </ThemedText>
 
           <View style={[styles.phoneRow, { backgroundColor: inputBg, borderColor: hair }]}>

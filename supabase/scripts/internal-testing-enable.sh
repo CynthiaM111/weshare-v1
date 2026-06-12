@@ -12,9 +12,10 @@ npx supabase secrets set OTP_DEV_BYPASS=true PAWAPAY_ENV=production
 
 echo "Internal testing mode ON:"
 echo "  - OTP_DEV_BYPASS=true  → codes shown in app (no Africa's Talking SMS)"
+echo "  - MoMo mock for +250780000001–006 → instant pay/payout (no PIN), real numbers use production PawaPay"
 echo "  - PAWAPAY_ENV=production"
 echo ""
-echo "Deploy functions: npx supabase functions deploy send-sms dev-otp-peek"
+echo "Deploy functions: npx supabase functions deploy send-sms dev-otp-peek pawapay-deposit pawapay-payout pawapay-check-status pawapay-check-payout-status"
 echo "Apply migration if needed: npx supabase db push"
 echo "Build app: eas build --profile internal --platform android"
 echo ""

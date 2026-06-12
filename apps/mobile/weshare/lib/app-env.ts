@@ -13,8 +13,12 @@ export function isProductionApp(): boolean {
   return getAppEnv() === 'production';
 }
 
-/** GPS dev bypass only in sandbox app builds. */
+/**
+ * GPS dev bypass: sandbox local dev, or internal Play build (uses ride from/to coords).
+ * Production launch builds always use device GPS.
+ */
 export function isGpsDevModeEnabled(): boolean {
+  if (isOtpDevBypassEnabled()) return true;
   if (isProductionApp()) return false;
   return process.env.EXPO_PUBLIC_GPS_DEV_MODE === 'true';
 }

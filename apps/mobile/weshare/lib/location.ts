@@ -67,7 +67,7 @@ export type RideGpsCoords = {
 
 /**
  * Coordinates for ride start/complete GPS verification.
- * Sandbox + EXPO_PUBLIC_GPS_DEV_MODE=true uses ride from/to coords. Production always uses device GPS.
+ * Internal Play build or sandbox + GPS_DEV_MODE uses ride from/to coords; production launch uses device GPS.
  */
 export async function getCoordsForRideGps(
   purpose: 'start' | 'complete',

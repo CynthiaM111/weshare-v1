@@ -4,6 +4,7 @@ import { syncDepositStatus } from "../_shared/deposit-sync.ts";
 import { getPawapayConfig } from "../_shared/pawapay-config.ts";
 import { parsePawapayEntityStatus } from "../_shared/pawapay-parse.ts";
 import { syncPayoutStatus } from "../_shared/payout-sync.ts";
+import { shouldMockMoMoPayment } from "../_shared/internal-test-phones.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,6 +141,36 @@ serve(async (req) => {
     const phoneNumber = normalizeRwandaPhone(phoneRaw);
     if (phoneNumber.length < 12) {
       throw new Error("Valid driver payout phone (250 + 9 digits) is required.");
+    }
+
+    if (shouldMockMoMoPayment(phoneNumber)) {
+      const payoutId = crypto.randomUUID();
+      const { error: linkErr } = await supabase
+        .from("payments")
+        .update({
+          payout_id: payoutId,
+          payout_status: "completed",
+          driver_phone: phoneNumber,
+        })
+        .eq("id", paymentId);
+      if (linkErr) throw new Error(`Payment record update failed: ${linkErr.message}`);
+      await syncPayoutStatus(supabase, payoutId, "COMPLETED");
+      const { data: updated } = await supabase
+        .from("payments")
+        .select("escrow_status, payout_status")
+        .eq("id", paymentId)
+        .single();
+      return new Response(
+        JSON.stringify({
+          payoutId,
+          status: "COMPLETED",
+          escrowStatus: updated?.escrow_status ?? "released",
+          payoutStatus: updated?.payout_status ?? "completed",
+          phoneNumber,
+          mocked: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const provider = detectNetworkRwanda(phoneNumber);

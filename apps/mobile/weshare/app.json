@@ -17,13 +17,13 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "WeShare uses your location to set pickup points, verify ride start and completion, and help you choose destinations in Rwanda."
       },
-      "bundleIdentifier": "com.weshare.app",
+      "bundleIdentifier": "com.wesharerw.app",
       "config": {
         "googleMapsApiKey": ""
       }
     },
     "android": {
-      "package": "com.weshare.app",
+      "package": "com.wesharerw.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#08111F"

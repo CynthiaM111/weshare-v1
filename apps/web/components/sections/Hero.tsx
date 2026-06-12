@@ -1,9 +1,6 @@
-import Image from "next/image";
 import { GooglePlayIcon, AppleIcon } from "../icons/StoreIcons";
 import { Reveal } from "../Reveal";
-
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=1600&q=80";
+import { HeroBackground, HERO_POSTER } from "./HeroBackground";
 
 export function Hero() {
   return (
@@ -11,32 +8,22 @@ export function Hero() {
       id="top"
       className="relative isolate flex min-h-screen items-center overflow-hidden pt-16"
     >
-      {/* Full-bleed background image with slow cinematic zoom */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 hero-zoom">
-          <Image
-            src={HERO_IMAGE}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center"
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <noscript>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${HERO_POSTER})` }}
+            aria-hidden="true"
           />
-        </div>
-        {/* Readability gradient overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to bottom, rgba(8,17,31,0.85) 0%, rgba(8,17,31,0.72) 50%, rgba(8,17,31,0.96) 100%)",
-          }}
-        />
+        </noscript>
+        <HeroBackground />
+        <div className="hero-bg-overlay" aria-hidden="true" />
       </div>
 
-      {/* Soft accent blobs over the photo */}
+      {/* Soft accent blobs over the video */}
       <div
         aria-hidden="true"
-        className="ws-blob ws-blob-teal"
+        className="ws-blob ws-blob-teal pointer-events-none absolute z-[1]"
         style={{
           width: 520,
           height: 520,
@@ -47,7 +34,7 @@ export function Hero() {
       />
       <div
         aria-hidden="true"
-        className="ws-blob ws-blob-orange"
+        className="ws-blob ws-blob-orange pointer-events-none absolute z-[1]"
         style={{
           width: 600,
           height: 600,
@@ -60,7 +47,7 @@ export function Hero() {
       {/* Subtle grid */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        className="pointer-events-none absolute inset-0 z-[1] opacity-[0.04]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
@@ -72,7 +59,7 @@ export function Hero() {
         }}
       />
 
-      <div className="ws-container relative z-10 py-16 md:py-24">
+      <div className="ws-container relative z-[1] py-16 md:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <span className="ws-eyebrow">
@@ -131,37 +118,16 @@ export function Hero() {
 
           <Reveal delay={320}>
             <p className="mt-6 text-sm text-white/60">
-              🌍 Starting in Rwanda · Expanding across East Africa
+              Starting in Rwanda · Built for intercity travel
             </p>
           </Reveal>
         </div>
       </div>
 
-      {/* Live rides indicator (bottom-right, hidden on mobile to avoid the floating calculator) */}
-      <div
-        className="absolute bottom-32 right-5 z-20 hidden items-center gap-3 sm:bottom-24 sm:right-8 sm:inline-flex md:bottom-10"
-        style={{
-          background: "rgba(8,17,31,0.75)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 14,
-          padding: "12px 16px",
-        }}
-      >
-        <span aria-hidden="true" className="ws-pulse-dot" />
-        <span
-          className="text-white"
-          style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}
-        >
-          247 rides shared this week across Rwanda
-        </span>
-      </div>
-
       {/* Bottom fade into next section */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-32"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-32"
         style={{
           background:
             "linear-gradient(180deg, rgba(8,17,31,0) 0%, #08111F 100%)",

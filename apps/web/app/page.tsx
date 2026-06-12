@@ -1,8 +1,9 @@
 import Navbar from "@/components/Navbar";
 import FuelPriceBanner from "@/components/FuelPriceBanner";
-import FloatingCalculator from "@/components/FloatingCalculator";
 import Hero from "@/components/sections/Hero";
 import Affordability from "@/components/sections/Affordability";
+import FareCalculator from "@/components/sections/FareCalculator";
+import AppShowcase from "@/components/sections/AppShowcase";
 import HowItWorks from "@/components/sections/HowItWorks";
 import WhyWeShare from "@/components/sections/WhyWeShare";
 import OurStory from "@/components/sections/OurStory";
@@ -16,11 +17,12 @@ export default function HomePage() {
     <>
       <Navbar />
       <FuelPriceBanner />
-      <FloatingCalculator />
+      <FareCalculator />
       <main>
         <Hero />
         <WaveDivider />
         <Affordability />
+        <AppShowcase />
         <HowItWorks />
         <WhyWeShare />
         <OurStory />

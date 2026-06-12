@@ -48,6 +48,10 @@ body {
     @apply py-20 md:py-28;
   }
 
+  .ws-section-sm {
+    @apply py-14 md:py-20;
+  }
+
   .ws-eyebrow {
     @apply inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-teal;
   }
@@ -112,6 +116,20 @@ body {
     background: rgba(10, 102, 194, 0.22);
   }
 
+  /* ── App media & calculator panels ─────────────────────── */
+  .ws-media-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+  }
+
+  .ws-calc-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    padding: 24px;
+  }
+
   /* ── Floating fare calculator ─────────────────────────── */
   .ws-floating-calc {
     position: fixed;
@@ -133,8 +151,6 @@ body {
       -1px 0 14px rgba(0, 201, 177, 0.2);
     animation: ws-calc-glow 4.2s ease-in-out infinite;
   }
-  /* Below 1024px (tablets + phones) the calc docks to the bottom so it never
-     overlays page content sideways. */
   @media (max-width: 1023px) {
     .ws-floating-calc {
       left: 12px;
@@ -145,19 +161,11 @@ body {
       width: auto;
     }
   }
-
-  /* Reserve space for the bottom-pinned calculator so the last section
-     and footer stay scrollable above it. */
   @media (max-width: 1023px) {
     body {
       padding-bottom: 156px;
     }
   }
-
-  /* On desktop the side-pinned calc occupies left: 24px → 304px of the
-     viewport. Shift content inside <main> AND the footer right so it clears
-     the calc + a comfortable buffer. The navbar (<header>) is intentionally
-     excluded — it stays full-width with the logo on the left. */
   @media (min-width: 1024px) {
     main .ws-container,
     footer .ws-container {
@@ -186,6 +194,7 @@ body {
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.5);
   }
+
   .ws-fc-select {
     width: 100%;
     background: rgba(255, 255, 255, 0.07);
@@ -373,16 +382,61 @@ body {
   animation: fade-up 0.7s var(--ease) both;
 }
 
-/* ── Hero background image slow zoom ───────────────────────── */
-@keyframes hero-zoom {
-  from { transform: scale(1); }
-  to { transform: scale(1.06); }
+/* ── Hero background video ─────────────────────────────────── */
+@keyframes heroZoom {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.08);
+  }
 }
 
-.hero-zoom {
-  animation: hero-zoom 12s ease-in-out infinite alternate;
+@keyframes heroZoomMobile {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.03);
+  }
+}
+
+.hero-bg-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  animation: heroZoom 12s ease-in-out infinite alternate;
   will-change: transform;
   transform-origin: center;
+}
+
+@media (max-width: 768px) {
+  .hero-bg-video {
+    animation-name: heroZoomMobile;
+  }
+}
+
+.hero-bg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 17, 31, 0.82) 0%,
+    rgba(8, 17, 31, 0.7) 50%,
+    rgba(8, 17, 31, 0.95) 100%
+  );
+}
+
+.hero-bg-fallback {
+  background-color: #08111f;
 }
 
 /* ── Scroll-reveal ─────────────────────────────────────────── */
@@ -961,7 +1015,7 @@ html { scroll-padding-top: 116px; }
   .ws-blob-teal,
   .ws-blob-orange,
   .ws-fade-up,
-  .hero-zoom,
+  .hero-bg-video,
   .ws-marquee-track,
   .ws-floating-calc-inner,
   .ws-pulse-dot,

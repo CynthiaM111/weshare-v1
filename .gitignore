@@ -49,3 +49,7 @@ apps/mobile/dist/
 # Supabase CLI local state
 supabase/.temp/
 apps/mobile/weshare/supabase/
+
+# Ad-hoc media uploads at repo root (organized copies live under apps/web/public/media/)
+/attachments*.zip
+/ScreenRecording*.MP4

@@ -103,21 +103,10 @@ export function Affordability() {
         </div>
 
         <Reveal delay={400}>
-          <div
-            className="mt-12 text-center text-white"
-            style={{
-              background: "linear-gradient(135deg, #FF6B35 0%, #FF4500 100%)",
-              borderRadius: 16,
-              padding: "24px 32px",
-              fontSize: "clamp(16px, 1.8vw, 22px)",
-              fontWeight: 700,
-              lineHeight: 1.35,
-              boxShadow: "0 14px 40px rgba(255,107,53,0.25)",
-            }}
-          >
-            🚗 Every empty seat on Rwanda&apos;s roads is a missed opportunity
-            to save. WeShare fills the gap.
-          </div>
+          <p className="mt-12 max-w-2xl text-center text-base leading-relaxed text-white/70 sm:mx-auto">
+            Every empty seat on a long-distance trip is fuel paid for twice.
+            WeShare helps drivers fill those seats and passengers pay less than a solo taxi.
+          </p>
         </Reveal>
       </div>
     </section>

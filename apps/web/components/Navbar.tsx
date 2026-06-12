@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 
 const NAV_LINKS: { label: string; href: string }[] = [
+  { label: "The app", href: "#app" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Our Story", href: "#our-story" },
   { label: "Team", href: "#team" },

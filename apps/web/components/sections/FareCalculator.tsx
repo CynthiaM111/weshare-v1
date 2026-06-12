@@ -15,17 +15,8 @@ const ROUTES: Route[] = [
   { id: "kibuye", label: "Kigali → Kibuye/Karongi", taxi: 14000 },
 ];
 
-const FACTS: string[] = [
-  "🔥 Fuel prices up 40% since 2022",
-  "🚗 Average Rwandan spends 35% of income on transport",
-  "💡 Sharing 2 seats cuts your cost in half",
-  "📈 WeShare saves users RWF 80,000+ per month",
-];
-
 const MIN_PASSENGERS = 1;
 const MAX_PASSENGERS = 4;
-// Below this width the calc is bottom-docked (see globals.css). Default to
-// collapsed there so it doesn't cover content; expanded by default on desktop.
 const COLLAPSE_BELOW = 1024;
 
 function fmt(n: number): string {
@@ -36,12 +27,11 @@ function roundToHundred(n: number): number {
   return Math.round(n / 100) * 100;
 }
 
-export function FloatingCalculator() {
+export function FareCalculator() {
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
   const [routeId, setRouteId] = useState<string>(ROUTES[0].id);
   const [passengers, setPassengers] = useState<number>(2);
-  const [factIndex, setFactIndex] = useState<number>(0);
 
   useEffect(() => {
     setMounted(true);
@@ -49,14 +39,6 @@ export function FloatingCalculator() {
       setCollapsed(window.innerWidth < COLLAPSE_BELOW);
     }
   }, []);
-
-  useEffect(() => {
-    if (collapsed) return;
-    const id = window.setInterval(() => {
-      setFactIndex((i) => (i + 1) % FACTS.length);
-    }, 3000);
-    return () => window.clearInterval(id);
-  }, [collapsed]);
 
   const route = useMemo(
     () => ROUTES.find((r) => r.id === routeId) ?? ROUTES[0],
@@ -69,6 +51,7 @@ export function FloatingCalculator() {
 
   return (
     <aside
+      id="calculator"
       aria-label="WeShare fare calculator"
       className="ws-floating-calc"
     >
@@ -83,7 +66,7 @@ export function FloatingCalculator() {
           aria-controls="ws-calc-body"
           className="ws-fc-toggle"
         >
-          <span>💰 Fare Calculator</span>
+          <span>Fare estimate</span>
           <svg
             aria-hidden="true"
             width="16"
@@ -106,35 +89,6 @@ export function FloatingCalculator() {
 
         {!collapsed && (
           <div id="ws-calc-body" className="mt-4 space-y-4">
-            <div>
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5"
-                style={{
-                  background: "rgba(0,201,177,0.12)",
-                  border: "1px solid rgba(0,201,177,0.30)",
-                  color: "#00C9B1",
-                  fontSize: 9,
-                  fontWeight: 800,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
-                  lineHeight: 1,
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-1 w-1 rounded-full"
-                  style={{ background: "#00C9B1" }}
-                />
-                Live Calculator
-              </span>
-              <h3
-                className="mt-2 text-white"
-                style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}
-              >
-                💰 How much will you save?
-              </h3>
-            </div>
-
             <div>
               <label htmlFor="ws-fc-route" className="ws-fc-label">
                 Your route
@@ -169,14 +123,7 @@ export function FloatingCalculator() {
                 </button>
                 <div
                   aria-live="polite"
-                  style={{
-                    flex: 1,
-                    textAlign: "center",
-                    color: "#fff",
-                    fontWeight: 800,
-                    fontSize: 14,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
+                  className="flex-1 text-center text-sm font-extrabold tabular-nums text-white"
                 >
                   {passengers} passenger{passengers === 1 ? "" : "s"}
                 </div>
@@ -194,97 +141,29 @@ export function FloatingCalculator() {
               </div>
             </div>
 
-            <div
-              style={{
-                background: "rgba(0,201,177,0.08)",
-                border: "1px solid rgba(0,201,177,0.20)",
-                borderRadius: 12,
-                padding: 14,
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.60)" }}>
-                  Private taxi
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "rgba(255,255,255,0.55)",
-                    textDecoration: "line-through",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
+            <div className="space-y-3 border-t border-white/[0.08] pt-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/55">Private taxi</span>
+                <span className="tabular-nums text-white/45 line-through">
                   RWF {fmt(route.taxi)}
                 </span>
               </div>
-
-              <div
-                aria-hidden="true"
-                className="my-2"
-                style={{
-                  height: 1,
-                  background: "rgba(255,255,255,0.10)",
-                }}
-              />
-
               <div className="flex items-center justify-between">
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "#00C9B1",
-                  }}
-                >
-                  Your WeShare fare
-                </span>
+                <span className="text-sm font-semibold text-teal">WeShare per seat</span>
                 <span
                   aria-live="polite"
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 900,
-                    color: "#00C9B1",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
+                  className="text-lg font-black tabular-nums text-teal"
                 >
                   RWF {fmt(weShareFare)}
                 </span>
               </div>
-
-              <div className="mt-3 text-center">
-                <span
-                  style={{
-                    display: "inline-block",
-                    background: "rgba(0,201,177,0.15)",
-                    borderRadius: 8,
-                    padding: "6px 10px",
-                    fontSize: 11,
-                    fontWeight: 800,
-                    color: "#00C9B1",
-                  }}
-                >
-                  ✅ You save RWF {fmt(savings)} per trip
-                </span>
-              </div>
+              <p className="rounded-lg bg-teal/10 px-3 py-2 text-center text-xs font-semibold text-teal">
+                You save about RWF {fmt(savings)} on this trip
+              </p>
             </div>
 
-            <p key={factIndex} className="ws-fact-text">
-              {FACTS[factIndex]}
-            </p>
-
-            <a
-              href="#download"
-              className="ws-btn-primary"
-              style={{
-                height: 36,
-                borderRadius: 10,
-                fontSize: 12,
-                fontWeight: 900,
-                width: "100%",
-                padding: 0,
-                gap: 6,
-              }}
-            >
-              Download &amp; Start Saving →
+            <a href="#download" className="ws-btn-primary h-10 w-full text-xs">
+              Download the app
             </a>
           </div>
         )}
@@ -293,4 +172,4 @@ export function FloatingCalculator() {
   );
 }
 
-export default FloatingCalculator;
+export default FareCalculator;

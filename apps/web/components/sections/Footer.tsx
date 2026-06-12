@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo } from "../Logo";
 
 const LINKS: { label: string; href: string; external?: boolean }[] = [
+  { label: "The app", href: "#app" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Download", href: "#download" },
   { label: "Team", href: "#team" },

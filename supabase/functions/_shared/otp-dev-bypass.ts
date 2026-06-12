@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export function isOtpDevBypassEnabled(): boolean {
   return (Deno.env.get("OTP_DEV_BYPASS") ?? "").trim().toLowerCase() === "true";
@@ -11,7 +11,7 @@ export function normalizePhoneE164(phone: string): string {
 }
 
 export async function storeDevOtpDisplay(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   phone: string,
   otp: string
 ): Promise<void> {
@@ -20,6 +20,6 @@ export async function storeDevOtpDisplay(
     phone: normalizePhoneE164(phone),
     otp,
     expires_at: expiresAt,
-  });
+  } as Record<string, string>);
   if (error) throw error;
 }

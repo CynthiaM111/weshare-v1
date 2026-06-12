@@ -24,7 +24,6 @@
     },
     "android": {
       "package": "com.weshare.app",
-      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#08111F"
@@ -51,16 +50,6 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "WeShare uses your location to verify ride start and completion near pickup and drop-off points."
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
-            "buildToolsVersion": "34.0.0"
-          }
         }
       ],
       "@react-native-community/datetimepicker"

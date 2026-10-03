@@ -21,6 +21,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
 import { passengerDisplayName } from '@/lib/auth/users';
+import { createNotification } from '@/lib/notifications';
 import {
   declineBooking,
   listBookingsForRideWithPassengers,
@@ -203,14 +204,14 @@ export default function RideDetailScreen() {
 
       const startedBookings = bookings.filter(b => b.status === 'confirmed');
       for (const b of startedBookings) {
-        await supabase.rpc('insert_notification', {
-          p_user_id: b.passengerId,
-          p_type: 'ride_started',
-          p_title: 'Your driver has started 🚗',
-          p_message: `Your driver is on the way for ${ride.fromShort} → ${ride.toShort}`,
-          p_ride_id: ride.id,
-          p_booking_id: b.id,
-        });
+        await createNotification(
+          b.passengerId,
+          'ride_started',
+          'Your driver has started 🚗',
+          `Your driver is on the way for ${ride.fromShort} → ${ride.toShort}`,
+          ride.id,
+          b.id,
+        );
       }
       setShowStartConfirm(false);
       setRide(prev => (prev ? { ...prev, status: 'started' } : prev));
@@ -313,15 +314,14 @@ export default function RideDetailScreen() {
     await supabase.from('payments').update({ escrow_status: 'disputed' }).eq('ride_id', ride.id);
 
     for (const b of activeBookings) {
-      await supabase.rpc('insert_notification', {
-        p_user_id: b.passengerId,
-        p_type: 'ride_completed',
-        p_title: 'Ride complete',
-        p_message:
-          'Your ride has been marked complete. Payment is under review by WeShare.',
-        p_ride_id: ride.id,
-        p_booking_id: b.id,
-      });
+      await createNotification(
+        b.passengerId,
+        'ride_completed',
+        'Ride complete',
+        'Your ride has been marked complete. Payment is under review by WeShare.',
+        ride.id,
+        b.id,
+      );
     }
 
     setRide(prev => (prev ? { ...prev, status: 'completed' } : prev));

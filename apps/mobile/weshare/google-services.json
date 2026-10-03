@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "899702669451",
+    "project_id": "corner-70a1e",
+    "storage_bucket": "corner-70a1e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:899702669451:android:ac2f5fa4770c0f570fd48e",
+        "android_client_info": {
+          "package_name": "com.cornerbusinessgroup.corner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "899702669451-2nk8tic847gjvv3m57rb5okdic1bs0vc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCouJGC6Nw2NRW7NS9aJhR2wokOjYQl5x0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "899702669451-2nk8tic847gjvv3m57rb5okdic1bs0vc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "899702669451-uvgne6e07q59ifeuur306f8sscs9i0ir.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.cornerbusinessgroup.corner"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:899702669451:android:db67149683d2d1280fd48e",
+        "android_client_info": {
+          "package_name": "com.wesharerw.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "899702669451-f1g9eoto8o5bkem7uvt05h2nu5i47vft.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wesharerw.app",
+            "certificate_hash": "0cbfdaa1790d7f5f2dd9b5586da71fe42dadf21a"
+          }
+        },
+        {
+          "client_id": "899702669451-2nk8tic847gjvv3m57rb5okdic1bs0vc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCouJGC6Nw2NRW7NS9aJhR2wokOjYQl5x0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "899702669451-2nk8tic847gjvv3m57rb5okdic1bs0vc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "899702669451-uvgne6e07q59ifeuur306f8sscs9i0ir.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.cornerbusinessgroup.corner"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

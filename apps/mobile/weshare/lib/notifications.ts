@@ -1,3 +1,4 @@
+import { deliverPushNotification } from './device-notifications';
 import { supabase } from './supabase';
 
 /**
@@ -85,6 +86,8 @@ export async function createNotification(
   });
 
   if (error) return null;
+
+  void deliverPushNotification(userId, title, message, { type, rideId, bookingId });
   return null;
 }
 

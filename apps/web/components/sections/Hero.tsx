@@ -1,4 +1,5 @@
 import { GooglePlayIcon, AppleIcon } from "../icons/StoreIcons";
+import { SectionLabel } from "../SectionLabel";
 import { Reveal } from "../Reveal";
 import { HeroBackground, HERO_POSTER } from "./HeroBackground";
 
@@ -6,7 +7,7 @@ export function Hero() {
   return (
     <section
       id="top"
-      className="relative isolate flex min-h-screen items-center overflow-hidden pt-16"
+      className="relative isolate flex min-h-[92vh] items-end overflow-hidden pt-[104px] md:items-center md:pt-24"
     >
       <div className="pointer-events-none absolute inset-0 z-0">
         <noscript>
@@ -20,118 +21,96 @@ export function Hero() {
         <div className="hero-bg-overlay" aria-hidden="true" />
       </div>
 
-      {/* Soft accent blobs over the video */}
+      {/* Route grid — fades toward content */}
       <div
         aria-hidden="true"
-        className="ws-blob ws-blob-teal pointer-events-none absolute z-[1]"
+        className="pointer-events-none absolute inset-0 z-[1] ws-route-grid opacity-60"
         style={{
-          width: 520,
-          height: 520,
-          top: "-120px",
-          left: "-120px",
-          opacity: 0.12,
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="ws-blob ws-blob-orange pointer-events-none absolute z-[1]"
-        style={{
-          width: 600,
-          height: 600,
-          bottom: "-180px",
-          right: "-160px",
-          opacity: 0.1,
+          maskImage: "linear-gradient(105deg, black 20%, transparent 70%)",
+          WebkitMaskImage: "linear-gradient(105deg, black 20%, transparent 70%)",
         }}
       />
 
-      {/* Subtle grid */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-[1] opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage:
-            "radial-gradient(ellipse at center, black 30%, transparent 70%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse at center, black 30%, transparent 70%)",
-        }}
-      />
+      <div className="ws-container relative z-[2] pb-16 pt-8 md:py-20">
+        <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-16">
+          <div className="max-w-2xl">
+            <Reveal>
+              <SectionLabel>Now in Rwanda</SectionLabel>
+            </Reveal>
 
-      <div className="ws-container relative z-[1] py-16 md:py-24">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal>
-            <span className="ws-eyebrow">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal" />
-              Now in Rwanda
-            </span>
-          </Reveal>
+            <Reveal delay={60}>
+              <h1 className="ws-headline ws-headline-xl mt-5">
+                Split the cost.
+                <br />
+                <span className="text-accent">Share the ride.</span>
+              </h1>
+            </Reveal>
 
-          <Reveal delay={80}>
-            <h1
-              className="mt-5 font-black leading-[1.05] tracking-tight text-white"
-              style={{ fontSize: "clamp(48px, 7vw, 80px)" }}
-            >
-              Split the Cost.{" "}
-              <span
-                style={{
-                  background: "linear-gradient(135deg, #FF6B35, #F5C842)",
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  color: "transparent",
-                }}
-              >
-                Share the Ride.
-              </span>
-            </h1>
-          </Reveal>
+            <Reveal delay={120}>
+              <p className="ws-lead mt-6 max-w-lg">
+                With fuel prices rising across Rwanda, WeShare lets drivers and
+                passengers split travel costs fairly — making every journey more
+                affordable for everyone on board.
+              </p>
+            </Reveal>
 
-          <Reveal delay={160}>
-            <p className="mx-auto mt-6 max-w-2xl text-base text-white/75 sm:text-lg">
-              With fuel prices rising across Rwanda, WeShare lets drivers and
-              passengers split travel costs fairly — making every journey more
-              affordable for everyone on board.
-            </p>
-          </Reveal>
+            <Reveal delay={180}>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a
+                  href="#download"
+                  className="ws-btn-primary"
+                  aria-label="Download on Android"
+                >
+                  <GooglePlayIcon className="h-5 w-5" />
+                  Download on Android
+                </a>
+                <a
+                  href="#download"
+                  className="ws-btn-secondary"
+                  aria-label="Download on iOS"
+                >
+                  <AppleIcon className="h-5 w-5" />
+                  iOS — coming soon
+                </a>
+              </div>
+            </Reveal>
+          </div>
 
-          <Reveal delay={240}>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <a
-                href="#"
-                className="ws-btn-primary h-12 px-6 text-[15px]"
-                aria-label="Download on Android"
-              >
-                <GooglePlayIcon className="h-5 w-5" />
-                Download on Android
-              </a>
-              <a
-                href="#"
-                className="ws-btn-outline h-12 px-6 text-[15px]"
-                aria-label="Download on iOS"
-              >
-                <AppleIcon className="h-5 w-5" />
-                Download on iOS
-              </a>
+          <Reveal delay={240} className="hidden lg:block">
+            <div className="ws-panel ws-panel-accent-left p-6">
+              <p className="ws-section-label !text-white/50">On the road today</p>
+              <ul className="mt-5 space-y-4 border-t border-white/[0.08] pt-5">
+                {[
+                  ["Kigali → Musanze", "From RWF 5,000/seat"],
+                  ["Kigali → Huye", "From RWF 4,000/seat"],
+                  ["Kigali → Rubavu", "From RWF 6,000/seat"],
+                ].map(([route, fare]) => (
+                  <li
+                    key={route}
+                    className="flex items-baseline justify-between gap-4 border-b border-dashed border-white/[0.08] pb-4 last:border-0 last:pb-0"
+                  >
+                    <span className="font-display text-lg font-semibold text-white">{route}</span>
+                    <span className="shrink-0 text-sm font-medium text-teal">{fare}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-5 text-xs text-white/45">
+                Estimates from the fare calculator — actual prices set by drivers.
+              </p>
             </div>
           </Reveal>
-
-          <Reveal delay={320}>
-            <p className="mt-6 text-sm text-white/60">
-              Starting in Rwanda · Built for intercity travel
-            </p>
-          </Reveal>
         </div>
+
+        <Reveal delay={300}>
+          <p className="mt-10 text-xs font-medium uppercase tracking-[0.16em] text-white/40">
+            Starting in Rwanda · Built for corridors people already travel
+          </p>
+        </Reveal>
       </div>
 
-      {/* Bottom fade into next section */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-32"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(8,17,31,0) 0%, #08111F 100%)",
-        }}
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-24 bg-gradient-to-t from-black to-transparent"
       />
     </section>
   );

@@ -12,41 +12,34 @@ const LINKS: { label: string; href: string; external?: boolean }[] = [
 
 export function SiteFooter() {
   return (
-    <footer
-      className="border-t border-white/5 pt-16 pb-8"
-      style={{
-        background: "linear-gradient(180deg, #0E1E35 0%, #08111F 100%)",
-      }}
-    >
+    <footer className="border-t border-white/[0.08] bg-black pt-14 pb-8">
       <div className="ws-container">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
-          {/* Logo + tagline */}
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-[1.2fr_0.8fr_0.8fr] md:gap-10">
           <div>
-            <Logo size={30} />
-            <p className="mt-4 max-w-xs text-sm text-white/60">
-              Connecting Rwanda, one ride at a time.
+            <Logo size={28} />
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-white/55">
+              Connecting Rwanda, one shared ride at a time.
             </p>
           </div>
 
-          {/* Links */}
           <nav aria-label="Footer">
-            <h4 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/45">
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">
               Explore
             </h4>
-            <ul className="mt-4 flex flex-col gap-3">
+            <ul className="mt-4 flex flex-col gap-2.5">
               {LINKS.map((l) => (
                 <li key={l.label}>
                   {l.external || l.href.startsWith("#") || l.href.startsWith("mailto:") ? (
                     <a
                       href={l.href}
-                      className="text-sm font-semibold text-white/80 transition-colors hover:text-white"
+                      className="text-sm font-medium text-white/70 transition-colors hover:text-white"
                     >
                       {l.label}
                     </a>
                   ) : (
                     <Link
                       href={l.href}
-                      className="text-sm font-semibold text-white/80 transition-colors hover:text-white"
+                      className="text-sm font-medium text-white/70 transition-colors hover:text-white"
                     >
                       {l.label}
                     </Link>
@@ -56,18 +49,17 @@ export function SiteFooter() {
             </ul>
           </nav>
 
-          {/* Contact + social */}
           <div>
-            <h4 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/45">
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">
               Get in touch
             </h4>
             <a
               href="mailto:contact@weshare.rw"
-              className="mt-4 inline-block text-sm font-semibold text-white/80 transition-colors hover:text-white"
+              className="mt-4 inline-block text-sm font-medium text-white/75 transition-colors hover:text-accent"
             >
               contact@weshare.rw
             </a>
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-5 flex items-center gap-2">
               <SocialButton label="Twitter / X" href="#">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
                   <path d="M18.244 3H21l-6.52 7.45L22 21h-6.156l-4.82-6.296L5.5 21H3l6.978-7.97L2 3h6.31l4.36 5.77L18.244 3Zm-2.157 16.2h1.706L7.99 4.71H6.16L16.087 19.2Z" />
@@ -75,7 +67,7 @@ export function SiteFooter() {
               </SocialButton>
               <SocialButton label="Instagram" href="#">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" />
+                  <rect x="3.5" y="3.5" width="17" height="17" rx="1" />
                   <circle cx="12" cy="12" r="3.8" />
                   <circle cx="17" cy="7" r="1" fill="currentColor" stroke="none" />
                 </svg>
@@ -89,9 +81,9 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-white/5 pt-6 text-xs text-white/45 sm:flex-row sm:items-center">
+        <div className="mt-12 flex flex-col items-start justify-between gap-2 border-t border-white/[0.06] pt-6 text-xs text-white/40 sm:flex-row sm:items-center">
           <p>© 2026 WeShare. All rights reserved.</p>
-          <p className="text-white/35">v1.0</p>
+          <p>v1.0</p>
         </div>
       </div>
     </footer>
@@ -111,7 +103,7 @@ function SocialButton({
     <a
       aria-label={label}
       href={href}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/75 transition-colors hover:border-white/40 hover:bg-white/10 hover:text-white"
+      className="inline-flex h-9 w-9 items-center justify-center border border-white/12 bg-white/[0.03] text-white/65 transition-colors hover:border-white/25 hover:text-white"
     >
       {children}
     </a>

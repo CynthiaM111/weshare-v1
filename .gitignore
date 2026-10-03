@@ -43,6 +43,7 @@ next-env.d.ts
 apps/web/storage/
 
 # Expo
+.expo/
 apps/mobile/.expo/
 apps/mobile/dist/
 

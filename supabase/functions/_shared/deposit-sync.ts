@@ -1,4 +1,5 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { notifyUser } from "./notify.ts";
 
 /** Apply final PawaPay deposit status to payments + bookings (idempotent). */
 export async function syncDepositStatus(
@@ -18,22 +19,22 @@ export async function syncDepositStatus(
   if (status === "COMPLETED" && payment.deposit_status !== "completed") {
     await supabase.from("payments").update({ deposit_status: "completed" }).eq("deposit_id", depositId);
 
-    await supabase.rpc("insert_notification", {
-      p_user_id: payment.driver_id,
-      p_type: "payment_received",
-      p_title: "Paid booking request 💰",
-      p_message: "A passenger paid for their seat. Open the ride to confirm or decline.",
-      p_ride_id: payment.ride_id,
-      p_booking_id: payment.booking_id,
+    await notifyUser(supabase, {
+      userId: payment.driver_id,
+      type: "payment_received",
+      title: "Paid booking request 💰",
+      message: "A passenger paid for their seat. Open the ride to confirm or decline.",
+      rideId: payment.ride_id,
+      bookingId: payment.booking_id,
     });
 
-    await supabase.rpc("insert_notification", {
-      p_user_id: payment.passenger_id,
-      p_type: "booking_pending",
-      p_title: "Payment received ✅",
-      p_message: "Your payment was received. Waiting for the driver to confirm your booking.",
-      p_ride_id: payment.ride_id,
-      p_booking_id: payment.booking_id,
+    await notifyUser(supabase, {
+      userId: payment.passenger_id,
+      type: "booking_pending",
+      title: "Payment received ✅",
+      message: "Your payment was received. Waiting for the driver to confirm your booking.",
+      rideId: payment.ride_id,
+      bookingId: payment.booking_id,
     });
     return;
   }
@@ -42,13 +43,12 @@ export async function syncDepositStatus(
     await supabase.from("payments").update({ deposit_status: "failed" }).eq("deposit_id", depositId);
     await supabase.from("bookings").update({ status: "cancelled" }).eq("id", payment.booking_id);
 
-    await supabase.rpc("insert_notification", {
-      p_user_id: payment.passenger_id,
-      p_type: "payment_failed",
-      p_title: "Payment failed",
-      p_message: "Your payment could not be processed. Please try again.",
-      p_ride_id: null,
-      p_booking_id: payment.booking_id,
+    await notifyUser(supabase, {
+      userId: payment.passenger_id,
+      type: "payment_failed",
+      title: "Payment failed",
+      message: "Your payment could not be processed. Please try again.",
+      bookingId: payment.booking_id,
     });
   }
 }

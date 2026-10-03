@@ -17,7 +17,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => setScrolled(window.scrollY > 48);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -34,63 +34,33 @@ export function Navbar() {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 border-b ws-nav ${
-        scrolled ? "ws-nav-glass" : "ws-nav-transparent"
+        scrolled ? "ws-nav-solid" : "ws-nav-transparent"
       }`}
     >
-      <nav className="ws-container flex h-[72px] items-center justify-between">
-        <Logo size={36} />
+      <nav className="ws-container flex h-16 items-center justify-between">
+        <Logo size={32} />
 
-        {/* Desktop: links + divider + CTA */}
-        <div className="hidden items-center gap-7 md:flex">
+        <div className="hidden items-center gap-8 md:flex">
           <ul className="flex items-center gap-7">
             {NAV_LINKS.map((l) => (
               <li key={l.href}>
-                <a
-                  href={l.href}
-                  className="text-[14px] font-semibold transition-colors duration-200"
-                  style={{ color: "rgba(255,255,255,0.70)" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "#FFFFFF")}
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "rgba(255,255,255,0.70)")
-                  }
-                >
+                <a href={l.href} className="ws-nav-link">
                   {l.label}
                 </a>
               </li>
             ))}
           </ul>
-          <span
-            aria-hidden="true"
-            className="h-5 w-px"
-            style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
-          />
-          <Link
-            href="/admin/verify-drivers"
-            className="text-[13px] font-semibold transition-colors duration-200"
-            style={{ color: "rgba(255,255,255,0.45)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#00C9B1")}
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "rgba(255,255,255,0.45)")
-            }
-          >
+          <span aria-hidden="true" className="h-4 w-px bg-white/10" />
+          <Link href="/admin/verify-drivers" className="ws-nav-link text-white/45 hover:text-teal">
             Admin
           </Link>
-          <a
-            href="#download"
-            className="ws-btn-primary"
-            style={{ padding: "10px 20px", fontSize: 14 }}
-          >
-            Download App
+          <a href="#download" className="ws-btn-primary !py-2.5 !px-4 !text-[13px]">
+            Download
           </a>
         </div>
 
-        {/* Mobile: CTA + hamburger */}
         <div className="flex items-center gap-2 md:hidden">
-          <a
-            href="#download"
-            className="ws-btn-primary"
-            style={{ padding: "8px 14px", fontSize: 13 }}
-          >
+          <a href="#download" className="ws-btn-primary !py-2 !px-3.5 !text-xs">
             Download
           </a>
           <button
@@ -99,16 +69,16 @@ export function Navbar() {
             aria-expanded={open}
             aria-controls="mobile-menu"
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition-colors duration-200 hover:bg-white/10"
+            className="inline-flex h-9 w-9 items-center justify-center border border-white/15 bg-white/[0.03] text-white transition-colors hover:border-white/30"
           >
             <svg
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
+              strokeWidth="2.2"
+              strokeLinecap="square"
             >
               {open ? (
                 <>
@@ -117,9 +87,8 @@ export function Navbar() {
                 </>
               ) : (
                 <>
-                  <line x1="4" y1="7" x2="20" y2="7" />
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <line x1="4" y1="17" x2="20" y2="17" />
+                  <line x1="4" y1="8" x2="20" y2="8" />
+                  <line x1="4" y1="16" x2="20" y2="16" />
                 </>
               )}
             </svg>
@@ -127,21 +96,19 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile menu panel */}
       <div
         id="mobile-menu"
-        className={`md:hidden overflow-hidden border-t border-white/5 transition-[max-height,opacity] duration-300 ease-out ${
-          open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+        className={`md:hidden overflow-hidden border-t border-white/[0.06] bg-black transition-[max-height,opacity] duration-300 ${
+          open ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
         }`}
-        style={{ backgroundColor: "rgba(8,17,31,0.96)" }}
       >
-        <div className="ws-container flex flex-col gap-1 py-4">
+        <div className="ws-container flex flex-col py-3">
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
               onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-semibold text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+              className="border-b border-white/[0.06] px-1 py-3.5 font-medium text-white/75 transition-colors hover:text-white"
             >
               {l.label}
             </a>
@@ -149,7 +116,7 @@ export function Navbar() {
           <Link
             href="/admin/verify-drivers"
             onClick={() => setOpen(false)}
-            className="rounded-lg px-3 py-3 text-base font-semibold text-teal/80 transition-colors hover:bg-white/5 hover:text-teal"
+            className="px-1 py-3.5 font-medium text-teal/80 hover:text-teal"
           >
             Admin — verify drivers
           </Link>

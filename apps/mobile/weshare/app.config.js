@@ -22,6 +22,12 @@ loadEnvIfPresent(path.join('app', '.env'));
 
 const appJson = require('./app.json');
 const googleMapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const googleServicesPath = path.join(root, 'google-services.json');
+
+// Required for Android push tokens. Download from the same Firebase project as the FCM v1 key.
+if (fs.existsSync(googleServicesPath)) {
+  appJson.expo.android.googleServicesFile = './google-services.json';
+}
 
 // Prefer env for Maps keys so real keys stay out of app.json in git.
 if (googleMapsKey) {

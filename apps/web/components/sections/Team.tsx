@@ -1,4 +1,5 @@
 import { Reveal } from "../Reveal";
+import { SectionLabel } from "../SectionLabel";
 
 type Member = {
   name: string;
@@ -30,35 +31,35 @@ const TEAM: Member[] = [
 
 export function Team() {
   return (
-    <section id="team" className="ws-section border-t border-white/[0.06]">
+    <section id="team" className="ws-section ws-bg-slate">
       <div className="ws-container">
         <Reveal>
-          <div className="max-w-2xl">
-            <span className="ws-eyebrow">Team</span>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">
-              The people building WeShare.
-            </h2>
-            <p className="mt-4 text-base text-white/65">
-              A small team in Rwanda working on transport people can actually afford.
-            </p>
-          </div>
+          <SectionLabel>Team</SectionLabel>
+          <h2 className="ws-headline ws-headline-lg mt-4 max-w-xl">
+            The people building WeShare.
+          </h2>
+          <p className="ws-lead mt-4 max-w-lg">
+            A small team in Rwanda working on transport people can actually afford.
+          </p>
         </Reveal>
 
-        <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.08] md:grid-cols-3">
+        <div className="mt-12 divide-y divide-white/[0.08] border-y border-white/[0.08]">
           {TEAM.map((m, i) => (
-            <Reveal key={m.name} delay={(i + 1) * 80}>
-              <article className="flex h-full flex-col bg-[#08111F] p-6 sm:p-7">
-                <p className="text-lg font-black tracking-tight text-white">{m.name}</p>
-                <p className="mt-1 text-sm font-medium text-teal">{m.title}</p>
-                <p className="mt-4 flex-1 text-sm leading-relaxed text-white/65">{m.bio}</p>
+            <Reveal key={m.name} delay={(i + 1) * 60}>
+              <article className="grid gap-4 py-8 sm:grid-cols-[minmax(0,220px)_1fr_auto] sm:items-start sm:gap-8 sm:py-10">
+                <div>
+                  <h3 className="font-display text-xl font-bold text-white">{m.name}</h3>
+                  <p className="mt-1 text-sm font-medium text-teal">{m.title}</p>
+                </div>
+                <p className="text-sm leading-relaxed text-white/60 sm:max-w-xl">{m.bio}</p>
                 <a
                   href={m.linkedin}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`${m.name} on LinkedIn`}
-                  className="ws-li-pill mt-6 self-start"
+                  className="ws-li-pill self-start sm:mt-1"
                 >
-                  LinkedIn →
+                  LinkedIn
                 </a>
               </article>
             </Reveal>

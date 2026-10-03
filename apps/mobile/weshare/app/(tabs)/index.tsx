@@ -21,8 +21,8 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
-
+import FindRideMap from '@/components/FindRideMap';
+import type { FindRideMapHandle, MapRegion } from '@/components/find-ride-map-shared';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -65,7 +65,7 @@ const SHEET_RESULTS = SCREEN_H * 0.72; // after search: full results
 
 type LatLng = { latitude: number; longitude: number };
 
-const KIGALI: Region = {
+const KIGALI: MapRegion = {
     latitude: -1.9441, longitude: 30.0619,
     latitudeDelta: 0.28, longitudeDelta: 0.28,
 };
@@ -83,7 +83,7 @@ export default function FindRideScreen() {
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
     const { session } = useSession();
-    const mapRef = useRef<MapView | null>(null);
+    const mapRef = useRef<FindRideMapHandle>(null);
 
     const sheetAnim = useRef(new Animated.Value(SHEET_PEEK)).current;
     const [sheetMode, setSheetMode] = useState<'peek' | 'suggest' | 'results'>('peek');
@@ -368,48 +368,16 @@ export default function FindRideScreen() {
         <View style={styles.root}>
 
             {/* ── Full-bleed map ── */}
-            <MapView
-                ref={r => { mapRef.current = r; }}
-                provider={PROVIDER_GOOGLE}
+            <FindRideMap
+                ref={mapRef}
+                isDark={isDark}
                 initialRegion={KIGALI}
-                style={StyleSheet.absoluteFill}
-                customMapStyle={isDark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE}
-                showsUserLocation
-                showsMyLocationButton={false}
-                toolbarEnabled={false}
+                fromCoord={fromCoord}
+                toCoord={toCoord}
+                routeCoords={routeCoords}
+                routeDashed={!hasPlacesKey()}
                 onPress={dismissAll}
-            >
-                {fromCoord && (
-                    <Marker coordinate={fromCoord}>
-                        <View style={styles.pinWrap}>
-                            <View style={[styles.pin, { backgroundColor: TEAL, shadowColor: TEAL }]}>
-                                <View style={styles.pinInner} />
-                            </View>
-                            <View style={[styles.pinTail, { borderTopColor: TEAL }]} />
-                        </View>
-                    </Marker>
-                )}
-                {toCoord && (
-                    <Marker coordinate={toCoord}>
-                        <View style={styles.pinWrap}>
-                            <View style={[styles.pin, { backgroundColor: ACCENT, shadowColor: ACCENT }]}>
-                                <View style={styles.pinInner} />
-                            </View>
-                            <View style={[styles.pinTail, { borderTopColor: ACCENT }]} />
-                        </View>
-                    </Marker>
-                )}
-                {routeCoords && routeCoords.length >= 2 && (
-                    <Polyline
-                        coordinates={routeCoords}
-                        strokeColor={ACCENT}
-                        strokeWidth={3.5}
-                        lineCap="round"
-                        lineJoin="round"
-                        lineDashPattern={hasPlacesKey() ? undefined : [10, 7]}
-                    />
-                )}
-            </MapView>
+            />
 
             {/* ── Location FAB ── */}
             <Pressable
@@ -854,29 +822,6 @@ function RideCard({ ride, expanded, onToggle, onBook, onManage, isOwn, cardBg, h
     );
 }
 
-// ─── Map styles ───────────────────────────────────────────────────────────────
-const DARK_MAP_STYLE = [
-    { elementType: 'geometry', stylers: [{ color: '#0d1b2a' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#6b7f99' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#08111f' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#162944' }] },
-    { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#1a3354' }] },
-    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#1f3d66' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#05101d' }] },
-    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-    { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#0b1929' }] },
-];
-
-const LIGHT_MAP_STYLE = [
-    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
-    { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#e8e8e8' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9e8f5' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#555' }] },
-];
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: NAVY },
@@ -887,21 +832,6 @@ const styles = StyleSheet.create({
         borderWidth: 1, alignItems: 'center', justifyContent: 'center',
         shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12,
         shadowOffset: { width: 0, height: 4 }, elevation: 8,
-    },
-
-    pinWrap: { alignItems: 'center' },
-    pin: {
-        width: 24, height: 24, borderRadius: 12,
-        alignItems: 'center', justifyContent: 'center',
-        shadowOpacity: 0.5, shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 }, elevation: 6,
-    },
-    pinInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.9)' },
-    pinTail: {
-        width: 0, height: 0,
-        borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 8,
-        borderLeftColor: 'transparent', borderRightColor: 'transparent',
-        marginTop: -1,
     },
 
     sheet: {

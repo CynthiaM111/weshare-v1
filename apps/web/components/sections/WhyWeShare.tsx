@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import { Reveal } from "../Reveal";
+import { SectionLabel } from "../SectionLabel";
 import {
   PhoneIcon,
   PinIcon,
@@ -50,40 +51,40 @@ const FEATURES: Feature[] = [
 
 export function WhyWeShare() {
   return (
-    <section id="why-weshare" className="ws-section border-t border-white/[0.06] bg-[#0a1528]">
+    <section id="why-weshare" className="ws-section ws-bg-black">
       <div className="ws-container">
-        <Reveal>
-          <div className="max-w-2xl">
-            <span className="ws-eyebrow">Why WeShare</span>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">
-              Shared mobility that fits Rwanda.
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-white/65">
-              Not another ride-hailing clone — a way to fill seats on trips people
-              are already making, with mobile money built in from day one.
-            </p>
-          </div>
-        </Reveal>
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+          <Reveal>
+            <div className="lg:sticky lg:top-28 lg:self-start">
+              <SectionLabel>Why WeShare</SectionLabel>
+              <h2 className="ws-headline ws-headline-lg mt-4">
+                Shared mobility that fits Rwanda.
+              </h2>
+              <p className="ws-lead mt-5">
+                Not another ride-hailing clone — a way to fill seats on trips people
+                are already making, with mobile money built in from day one.
+              </p>
+            </div>
+          </Reveal>
 
-        <div className="mt-12 divide-y divide-white/[0.08] border-y border-white/[0.08]">
-          {FEATURES.map((f, i) => {
-            const Icon = f.icon;
-            return (
-              <Reveal key={f.label} delay={(i % 3) * 60}>
-                <div className="grid gap-4 py-6 sm:grid-cols-[auto_1fr] sm:gap-6 sm:py-7">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-teal">
-                    <Icon className="h-5 w-5" />
+          <div className="divide-y divide-white/[0.08] border-y border-white/[0.08]">
+            {FEATURES.map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <Reveal key={f.label} delay={(i % 2) * 40}>
+                  <div className="group grid gap-4 py-7 sm:grid-cols-[48px_1fr] sm:gap-6">
+                    <div className="flex h-10 w-10 items-center justify-center border border-white/10 text-teal transition-colors group-hover:border-teal/40 group-hover:bg-teal/5">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-lg font-semibold text-white">{f.label}</h3>
+                      <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/55">{f.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-extrabold text-white">{f.label}</h3>
-                    <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/60">
-                      {f.desc}
-                    </p>
-                  </div>
-                </div>
-              </Reveal>
-            );
-          })}
+                </Reveal>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

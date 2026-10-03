@@ -1,144 +1,76 @@
-import type { CSSProperties, ReactNode } from "react";
 import { Reveal } from "../Reveal";
-
-type Tone = "orange" | "teal" | "gold";
+import { SectionLabel } from "../SectionLabel";
 
 type Stat = {
-  number: string;
+  value: string;
   label: string;
-  tone: Tone;
-  delay: number;
+  accent: "accent" | "teal" | "gold";
 };
 
 const STATS: Stat[] = [
   {
-    number: "60%",
-    label: "Average savings compared to hiring a private taxi",
-    tone: "orange",
-    delay: 100,
+    value: "60%",
+    label: "Average savings vs. hiring a private taxi on intercity routes",
+    accent: "accent",
   },
   {
-    number: "3x",
+    value: "3×",
     label: "More affordable than solo travel when seats are shared",
-    tone: "teal",
-    delay: 200,
+    accent: "teal",
   },
   {
-    number: "0 RWF",
-    label: "No surge pricing. No hidden fees. Pay what's agreed.",
-    tone: "gold",
-    delay: 300,
+    value: "0 RWF",
+    label: "Surge pricing. No hidden fees. Pay what was agreed.",
+    accent: "gold",
   },
 ];
 
-function toneStyle(tone: Tone): CSSProperties {
-  if (tone === "orange") {
-    return {
-      background: "linear-gradient(135deg, #FF6B35, #F5C842)",
-      WebkitBackgroundClip: "text",
-      backgroundClip: "text",
-      color: "transparent",
-    };
-  }
-  if (tone === "teal") return { color: "#00C9B1" };
-  return { color: "#F5C842" };
-}
+const accentClass = {
+  accent: { border: "border-accent", text: "text-accent" },
+  teal: { border: "border-teal", text: "text-teal" },
+  gold: { border: "border-gold", text: "text-gold" },
+} as const;
 
 export function Affordability() {
   return (
-    <section
-      id="affordability"
-      className="relative overflow-hidden ws-section"
-      style={{ backgroundColor: "#08111F" }}
-    >
-      <div
-        aria-hidden="true"
-        className="ws-blob ws-blob-orange"
-        style={{
-          width: 520,
-          height: 520,
-          top: "-180px",
-          right: "-200px",
-          opacity: 0.08,
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="ws-blob ws-blob-teal"
-        style={{
-          width: 460,
-          height: 460,
-          bottom: "-160px",
-          left: "-180px",
-          opacity: 0.08,
-        }}
-      />
+    <section id="affordability" className="ws-section ws-bg-paper">
+      <div className="ws-container">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-20">
+          <Reveal>
+            <div>
+              <SectionLabel>Why WeShare exists</SectionLabel>
+              <h2 className="ws-headline ws-headline-lg mt-4">
+                Fuel prices are rising.
+                <br />
+                Your transport costs don&apos;t have to.
+              </h2>
+            </div>
+          </Reveal>
 
-      <div className="ws-container relative z-10">
-        <Reveal>
-          <div className="mx-auto max-w-3xl text-center">
-            <span className="ws-eyebrow">Why WeShare Exists</span>
-            <h2
-              className="mt-4 font-black tracking-tight text-white"
-              style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.08 }}
-            >
-              Fuel prices are rising. Your transport costs don&apos;t have to.
-            </h2>
-            <p className="mt-6 text-base leading-relaxed text-white/70 sm:text-lg">
+          <Reveal delay={80}>
+            <p className="ws-lead lg:pt-10">
               Every day, thousands of drivers make the same journey — Kigali to
-              Musanze, Huye to Kigali, Rubavu to the capital — with empty
-              seats. Every empty seat is a wasted cost. WeShare fills those
-              seats, splits the fuel bill, and puts money back in
-              everyone&apos;s pocket.
+              Musanze, Huye to Kigali, Rubavu to the capital — with empty seats.
+              Every empty seat is fuel paid for twice. WeShare fills those seats,
+              splits the bill, and puts money back in everyone&apos;s pocket.
             </p>
-          </div>
-        </Reveal>
+          </Reveal>
+        </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {STATS.map((s) => (
-            <Reveal key={s.number} delay={s.delay}>
-              <StatCard stat={s} />
+        <div className="mt-14 grid gap-10 border-t border-white/[0.08] pt-14 sm:grid-cols-3 sm:gap-8">
+          {STATS.map((s, i) => (
+            <Reveal key={s.value} delay={100 + i * 60}>
+              <div className={`ws-stat ${accentClass[s.accent].border}`}>
+                <div className={`ws-stat-value ${accentClass[s.accent].text}`}>
+                  {s.value}
+                </div>
+                <p className="ws-stat-label">{s.label}</p>
+              </div>
             </Reveal>
           ))}
         </div>
-
-        <Reveal delay={400}>
-          <p className="mt-12 max-w-2xl text-center text-base leading-relaxed text-white/70 sm:mx-auto">
-            Every empty seat on a long-distance trip is fuel paid for twice.
-            WeShare helps drivers fill those seats and passengers pay less than a solo taxi.
-          </p>
-        </Reveal>
       </div>
     </section>
-  );
-}
-
-function StatCard({ stat }: { stat: Stat }): ReactNode {
-  return (
-    <div
-      className="h-full text-center"
-      style={{
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 20,
-        padding: 32,
-        transition: "all 0.25s var(--ease)",
-      }}
-    >
-      <div
-        className="font-black leading-none tracking-tight"
-        style={{
-          fontSize: "clamp(48px, 6vw, 72px)",
-          fontVariantNumeric: "tabular-nums",
-          ...toneStyle(stat.tone),
-        }}
-      >
-        {stat.number}
-      </div>
-      <p className="mx-auto mt-5 max-w-[260px] text-sm leading-relaxed text-white/65 sm:text-base">
-        {stat.label}
-      </p>
-    </div>
   );
 }
 

@@ -152,17 +152,17 @@ export function FareCalculator() {
                 <span className="text-sm font-semibold text-teal">WeShare per seat</span>
                 <span
                   aria-live="polite"
-                  className="text-lg font-black tabular-nums text-teal"
+                  className="font-display text-lg font-bold tabular-nums text-teal"
                 >
                   RWF {fmt(weShareFare)}
                 </span>
               </div>
-              <p className="rounded-lg bg-teal/10 px-3 py-2 text-center text-xs font-semibold text-teal">
+              <p className="border border-teal/20 bg-teal/10 px-3 py-2 text-center text-xs font-medium text-teal">
                 You save about RWF {fmt(savings)} on this trip
               </p>
             </div>
 
-            <a href="#download" className="ws-btn-primary h-10 w-full text-xs">
+            <a href="#download" className="ws-btn-primary h-10 w-full !text-xs">
               Download the app
             </a>
           </div>

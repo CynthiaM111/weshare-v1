@@ -1,16 +1,24 @@
+import type { ReactNode } from "react";
 import QRCode from "qrcode";
 import { AppleIcon, GooglePlayIcon } from "../icons/StoreIcons";
+import { SectionLabel } from "../SectionLabel";
 import { Reveal } from "../Reveal";
 
 const PLAY_URL = "https://play.google.com/store";
 const APPLE_URL = "https://apps.apple.com";
+
+const PERKS = [
+  "Free to download",
+  "Pay per ride — no subscription",
+  "MTN & Airtel mobile money built in",
+] as const;
 
 async function makeQrSvg(url: string): Promise<string> {
   return QRCode.toString(url, {
     type: "svg",
     errorCorrectionLevel: "M",
     margin: 1,
-    width: 160,
+    width: 128,
     color: { dark: "#08111F", light: "#FFFFFF" },
   });
 }
@@ -22,88 +30,74 @@ export async function Download() {
   ]);
 
   return (
-    <section
-      id="download"
-      className="relative overflow-hidden py-24 md:py-32"
-      style={{
-        background:
-          "linear-gradient(180deg, #00C9B1 -40%, #0E1E35 50%, #08111F 100%)",
-      }}
-    >
+    <section id="download" className="ws-section relative overflow-hidden ws-bg-black">
       <div
         aria-hidden="true"
-        className="ws-blob ws-blob-teal"
-        style={{ width: 520, height: 520, top: "-200px", right: "-160px", opacity: 0.18 }}
-      />
-      <div
-        aria-hidden="true"
-        className="ws-blob ws-blob-orange"
-        style={{ width: 460, height: 460, bottom: "-180px", left: "-120px", opacity: 0.18 }}
+        className="pointer-events-none absolute inset-0 ws-route-grid opacity-30"
+        style={{
+          maskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)",
+          WebkitMaskImage:
+            "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)",
+        }}
       />
 
-      <div className="ws-container relative z-10 text-center">
+      <div className="ws-container relative">
         <Reveal>
-          <span className="ws-eyebrow">Download</span>
-          <h2
-            className="mx-auto mt-3 max-w-3xl font-black tracking-tight text-white"
-            style={{ fontSize: "clamp(36px, 5vw, 56px)", lineHeight: 1.05 }}
-          >
-            Get WeShare on your phone.
+          <SectionLabel>Download</SectionLabel>
+          <h2 className="ws-headline ws-headline-xl mt-4 max-w-3xl">
+            Install <span className="text-accent">WeShare</span>
+            <br className="hidden sm:block" />
+            {" "}and share the road.
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-base text-white/70 sm:text-lg">
-            Available on Android and iOS now.
-          </p>
         </Reveal>
 
-        <Reveal delay={120}>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a
-              href={PLAY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Get WeShare on Google Play"
-              className="ws-btn-primary inline-flex h-16 min-w-[230px] items-center justify-start gap-3 rounded-2xl px-6 text-left"
-            >
-              <GooglePlayIcon className="h-8 w-8 shrink-0" />
-              <span className="flex flex-col leading-tight">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-                  Get it on
-                </span>
-                <span className="text-lg font-black">Google Play</span>
-              </span>
-            </a>
+        <Reveal delay={80}>
+          <div className="ws-download-card mt-10 overflow-hidden lg:mt-12">
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_280px]">
+              {/* Copy + store links */}
+              <div className="border-b border-white/[0.08] p-6 sm:p-8 lg:border-b-0 lg:border-r lg:border-white/[0.08]">
+                <p className="max-w-md text-base leading-relaxed text-white/65 sm:text-lg">
+                  Android is live today. iOS is on the way. Search routes, book a seat,
+                  and pay with mobile money — all from your phone.
+                </p>
 
-            <a
-              href="#"
-              aria-label="App Store — Coming soon"
-              className="ws-btn-outline inline-flex h-16 min-w-[230px] cursor-not-allowed items-center justify-start gap-3 rounded-2xl px-6 text-left opacity-75"
-              tabIndex={-1}
-            >
-              <AppleIcon className="h-8 w-8 shrink-0" />
-              <span className="flex flex-col leading-tight">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
-                  Coming Soon
-                </span>
-                <span className="text-lg font-black">App Store</span>
-              </span>
-            </a>
+                <ul className="mt-6 space-y-2.5">
+                  {PERKS.map((perk) => (
+                    <li key={perk} className="ws-download-perk">
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-8 space-y-3">
+                  <StoreLink
+                    href={PLAY_URL}
+                    label="Get it on"
+                    store="Google Play"
+                    icon={<GooglePlayIcon className="h-7 w-7 shrink-0" />}
+                    active
+                  />
+                  <StoreLink
+                    label="Coming soon"
+                    store="App Store"
+                    icon={<AppleIcon className="h-7 w-7 shrink-0" />}
+                    disabled
+                  />
+                </div>
+              </div>
+
+              {/* QR codes */}
+              <div className="grid grid-cols-2 divide-x divide-white/[0.08] bg-black/40 lg:grid-cols-1 lg:divide-x-0 lg:divide-y lg:divide-white/[0.08]">
+                <QrCell label="Android" sublabel="Scan to install" svgMarkup={playSvg} />
+                <QrCell label="iOS" sublabel="Coming soon" svgMarkup={appleSvg} muted />
+              </div>
+            </div>
           </div>
         </Reveal>
 
-        {/* QR codes */}
-        <Reveal delay={220}>
-          <div className="mt-12 flex flex-col items-center justify-center gap-8 sm:flex-row sm:gap-12">
-            <QrCard label="Scan for Android" svgMarkup={playSvg} />
-            <QrCard label="Scan for iOS" svgMarkup={appleSvg} />
-          </div>
-        </Reveal>
-
-        <Reveal delay={300}>
-          <p className="mt-6 text-sm text-white/50">
-            Point your phone camera at the code to download
-          </p>
-          <p className="mt-8 text-sm text-white/60">
-            Free to download · No subscription · Pay per ride
+        <Reveal delay={140}>
+          <p className="mt-6 text-xs font-medium uppercase tracking-[0.14em] text-white/35">
+            Available in Rwanda · Built for intercity travel
           </p>
         </Reveal>
       </div>
@@ -111,31 +105,99 @@ export async function Download() {
   );
 }
 
-function QrCard({ label, svgMarkup }: { label: string; svgMarkup: string }) {
+function StoreLink({
+  href,
+  label,
+  store,
+  icon,
+  active = false,
+  disabled = false,
+}: {
+  href?: string;
+  label: string;
+  store: string;
+  icon: ReactNode;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  const className = `ws-download-store group ${
+    active ? "ws-download-store--active" : ""
+  } ${disabled ? "ws-download-store--soon" : ""}`;
+
+  const inner = (
+    <>
+      {icon}
+      <span className="flex flex-col leading-tight">
+        <span
+          className={`text-[10px] font-medium uppercase tracking-[0.14em] ${
+            active ? "text-white/75" : "text-white/45"
+          }`}
+        >
+          {label}
+        </span>
+        <span className="font-display text-lg font-bold text-white">{store}</span>
+      </span>
+      {active && (
+        <span
+          aria-hidden="true"
+          className="ml-auto text-lg text-white/70 transition-transform duration-200 group-hover:translate-x-0.5"
+        >
+          →
+        </span>
+      )}
+    </>
+  );
+
+  if (disabled || !href) {
+    return (
+      <span aria-label={`${store} — ${label}`} className={className} tabIndex={-1}>
+        {inner}
+      </span>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${label} ${store}`}
+      className={className}
+    >
+      {inner}
+    </a>
+  );
+}
+
+function QrCell({
+  label,
+  sublabel,
+  svgMarkup,
+  muted = false,
+}: {
+  label: string;
+  sublabel: string;
+  svgMarkup: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-8">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
+        {sublabel}
+      </p>
       <div
-        className="inline-flex items-center justify-center bg-white"
-        style={{
-          borderRadius: 16,
-          padding: 16,
-          boxShadow: "0 14px 40px rgba(0,0,0,0.25)",
-        }}
+        className={`mt-3 border bg-white p-2.5 ${muted ? "opacity-50" : ""}`}
+        style={{ borderColor: "rgba(255,255,255,0.12)" }}
       >
         <div
-          aria-label={label}
+          aria-label={`QR code for ${label}`}
           role="img"
           className="block"
-          style={{ width: 160, height: 160 }}
+          style={{ width: 128, height: 128 }}
           dangerouslySetInnerHTML={{ __html: svgMarkup }}
         />
       </div>
-      <p
-        className="mt-3 text-center"
-        style={{ fontSize: 12, color: "rgba(255,255,255,0.50)" }}
-      >
-        {label}
-      </p>
+      <p className="mt-3 font-display text-sm font-semibold text-white/70">{label}</p>
     </div>
   );
 }

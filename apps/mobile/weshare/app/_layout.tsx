@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -12,6 +12,7 @@ import { SplashView } from '@/components/SplashView';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSplashReady } from '@/hooks/use-splash-ready';
 import { SessionProvider, useSession } from '@/hooks/use-session';
+import { syncDeviceNotifications } from '@/lib/device-notifications';
 import { splashPrevented } from '@/lib/splash';
 
 export const unstable_settings = {
@@ -19,8 +20,18 @@ export const unstable_settings = {
 };
 
 function RootNavigator() {
-  const { loading, sessionExpired, dismissSessionExpired } = useSession();
+  const { loading, session, sessionExpired, dismissSessionExpired } = useSession();
   const showSplash = useSplashReady(loading);
+  const userId = session?.userId;
+
+  useEffect(() => {
+    if (!userId) return;
+    void syncDeviceNotifications(userId);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void syncDeviceNotifications(userId);
+    });
+    return () => sub.remove();
+  }, [userId]);
 
   useEffect(() => {
     if (!showSplash) {

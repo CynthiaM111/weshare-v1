@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { parseDepositCallback, syncDepositStatus } from "../_shared/deposit-sync.ts";
+import { notifyUser } from "../_shared/notify.ts";
 import { syncPayoutStatus } from "../_shared/payout-sync.ts";
 
 const corsHeaders = {
@@ -66,13 +67,11 @@ serve(async (req) => {
       if (refundStatus === "COMPLETED") {
         await supabase.from("payments").update({ escrow_status: "refunded" }).eq("deposit_id", refundId);
 
-        await supabase.rpc("insert_notification", {
-          p_user_id: payment.passenger_id,
-          p_type: "refund_sent",
-          p_title: "Refund sent 💸",
-          p_message: `Your refund of RWF ${payment.gross_amount.toLocaleString()} has been sent to your mobile money`,
-          p_ride_id: null,
-          p_booking_id: null,
+        await notifyUser(supabase, {
+          userId: payment.passenger_id,
+          type: "refund_sent",
+          title: "Refund sent 💸",
+          message: `Your refund of RWF ${payment.gross_amount.toLocaleString()} has been sent to your mobile money`,
         });
       }
     }

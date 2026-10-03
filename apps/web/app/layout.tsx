@@ -1,12 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Bricolage_Grotesque, IBM_Plex_Sans } from "next/font/google";
 import { AdminSiteNotifier } from "@/components/AdminSiteNotifier";
 import "./globals.css";
 
-const inter = Inter({
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["400", "600", "800", "900"],
-  variable: "--font-inter",
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const body = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -57,7 +65,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#08111F",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
 };
@@ -66,8 +74,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="bg-navy text-white antialiased font-sans">
+    <html lang="en" className={`${display.variable} ${body.variable}`}>
+      <body className="bg-black text-white antialiased font-body">
         {children}
         <AdminSiteNotifier />
       </body>

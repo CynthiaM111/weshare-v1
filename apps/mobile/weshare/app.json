@@ -52,7 +52,13 @@
           "locationWhenInUsePermission": "WeShare uses your location to verify ride start and completion near pickup and drop-off points."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "color": "#08111F"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

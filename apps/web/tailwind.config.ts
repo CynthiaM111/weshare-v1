@@ -8,30 +8,49 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        black: {
+          DEFAULT: "#000000",
+          ink: "#060b14",
+        },
         navy: {
-          DEFAULT: "#08111F",
-          2: "#0E1E35",
+          DEFAULT: "#0c1829",
+          2: "#152238",
           900: "#08111F",
           800: "#0E1E35",
         },
+        slate: "#1a2d48",
+        paper: "#f2f0eb",
         accent: "#FF6B35",
         accent2: "#FF4500",
         teal: "#00C9B1",
         gold: "#F5C842",
       },
       fontFamily: {
-        sans: [
-          "Inter",
+        display: ["var(--font-display)", "Georgia", "serif"],
+        body: [
+          "var(--font-body)",
           "system-ui",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
-          "Roboto",
+          "sans-serif",
+        ],
+        sans: [
+          "var(--font-body)",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
           "sans-serif",
         ],
       },
       maxWidth: {
-        page: "1200px",
+        page: "1180px",
+        prose: "42rem",
+      },
+      borderRadius: {
+        ws: "6px",
+        "ws-lg": "10px",
       },
     },
   },

@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthLogo } from '@/components/auth-logo';
 import { ThemedText } from '@/components/themed-text';
 import { useRedirectIfAuthenticated } from '@/hooks/use-redirect-if-authenticated';
-import { isOtpDevBypassEnabled, isSandboxApp } from '@/lib/app-env';
+import { DEV_UI_ENABLED, isSandboxApp } from '@/lib/app-env';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { normalizeAuthRedirect } from '@/lib/auth/navigation';
 import { sendOtp } from '@/lib/auth/otp';
@@ -117,14 +117,16 @@ export default function AuthScreen() {
               </View>
             ) : null}
 
-            {isOtpDevBypassEnabled() ? (
-              <ThemedText style={styles.hintText}>
-                Test numbers +250780000001–006: code 123456. Real numbers: code appears on the next screen (no SMS).
-              </ThemedText>
-            ) : isSandboxApp() ? (
-              <ThemedText style={styles.hintText}>
-                Test numbers: +250780000001 – +250780000006 (code: 123456)
-              </ThemedText>
+            {(process.env.EXPO_PUBLIC_APP_ENV === 'sandbox' || process.env.EXPO_PUBLIC_APP_ENV === 'development') ? (
+              DEV_UI_ENABLED ? (
+                <ThemedText style={styles.hintText}>
+                  Test numbers +250780000001–006: code 123456. Real numbers: code appears on the next screen (no SMS).
+                </ThemedText>
+              ) : isSandboxApp() ? (
+                <ThemedText style={styles.hintText}>
+                  Test numbers: +250780000001 – +250780000006 (code: 123456)
+                </ThemedText>
+              ) : null
             ) : null}
 
             <Pressable

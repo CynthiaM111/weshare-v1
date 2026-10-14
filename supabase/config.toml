@@ -9,6 +9,14 @@ verify_jwt = false
 [functions.dev-otp-peek]
 verify_jwt = false
 
+# Pindo Delivery Receipt Webhook (authenticated via URL secret, no user JWT).
+[functions.pindo-dlr-webhook]
+verify_jwt = false
+
+# Database Webhook for Push Notifications (authenticated via secret, no user JWT).
+[functions.send-push]
+verify_jwt = false
+
 # PawaPay secrets (Dashboard → Edge Functions → Secrets):
 #   PAWAPAY_ENV=sandbox|production  — flip with supabase/scripts/pawapay-use-*.sh
 #   PAWAPAY_SANDBOX_BASE_URL=https://api.sandbox.pawapay.io
@@ -32,12 +40,13 @@ verify_jwt = false
 #   3. Register alphanumeric sender ID "WeShare" for Rwanda (Dashboard → SMS → Sender IDs).
 #   4. Set AT_SENDER_ID=WeShare in Edge secrets — hook sends from=WeShare on production API.
 #
-# INTERNAL PLAY TESTING (production PawaPay + real phones, no AT SMS yet):
+# INTERNAL PLAY TESTING (production PawaPay + real phones with AT SMS):
 #   bash supabase/scripts/internal-testing-enable.sh
 #   Sets OTP_DEV_BYPASS=true + PAWAPAY_ENV=production.
+#   DEV_BYPASS_NUMBERS allowlist (secret): comma-separated numbers (defaults to +250780000001–006).
+#   Only allowlisted numbers bypass SMS and store OTP in dev_otp_display.
+#   All other numbers always send real SMS via Africa's Talking.
 #   MoMo mock: +250780000001–006 pay/payout instantly (no PIN). Real numbers use production PawaPay + PIN.
-#   Mobile: eas build --profile internal (EXPO_PUBLIC_OTP_DEV_BYPASS=true) → GPS bypass + OTP on screen.
-#   OTP appears on-screen; verify still via Supabase Auth.
 #   Before launch: bash supabase/scripts/internal-testing-disable.sh
 #
 # SUPABASE (Dashboard → Authentication)

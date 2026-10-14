@@ -46,9 +46,12 @@ apps/web/storage/
 .expo/
 apps/mobile/.expo/
 apps/mobile/dist/
+apps/mobile/weshare/.expo/
+apps/mobile/weshare/dist*/
 
 # Supabase CLI local state
 supabase/.temp/
+supabase/.branches/
 apps/mobile/weshare/supabase/
 
 # Ad-hoc media uploads at repo root (organized copies live under apps/web/public/media/)

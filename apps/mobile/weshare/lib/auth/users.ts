@@ -67,6 +67,24 @@ export function passengerDisplayName(
   return `Passenger ${passengerId.slice(0, 8)}`;
 }
 
+/**
+ * Updates an existing user's full name.
+ * Safe for post-phone confirmation where profile row is already auto-provisioned.
+ */
+export async function updateProfileName(
+  userId: string,
+  fullName: string
+): Promise<string | null> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      full_name: fullName.trim(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+  return error ? error.message : null;
+}
+
 export async function upsertProfile(
   userId: string,
   fields: { fullName?: string; phoneE164?: string }

@@ -19,7 +19,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/hooks/use-session';
 import { createBooking } from '@/lib/bookings';
-import { isOtpDevBypassEnabled } from '@/lib/app-env';
+import { DEV_UI_ENABLED } from '@/lib/app-env';
 import { bookingConfirmAuthRedirect } from '@/lib/auth/navigation';
 import { isSupabaseAuthTestPhone } from '@/lib/auth/phone';
 import { computePaymentAmounts } from '@/lib/payment-fees';
@@ -336,7 +336,8 @@ export default function ConfirmBookingScreen() {
   const bookingWindowOpen = canBookBeforeDeparture(ride.departAtISO, BOOKING_CUTOFF_MINUTES);
   const canPay = phoneValid && bookingWindowOpen && payPhase === 'form';
   const internalTestMoMo =
-    isOtpDevBypassEnabled() &&
+    (process.env.EXPO_PUBLIC_APP_ENV === 'sandbox' || process.env.EXPO_PUBLIC_APP_ENV === 'development') &&
+    DEV_UI_ENABLED &&
     phoneValid &&
     isSupabaseAuthTestPhone(`+250${localPhone.replace(/\D/g, '')}`);
 
@@ -574,7 +575,7 @@ export default function ConfirmBookingScreen() {
         <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: hair }]}>
           <ThemedText style={[styles.sectionTitle, { color: textPri }]}>Mobile money</ThemedText>
           <ThemedText style={[styles.sectionSub, { color: textSub }]}>
-            {internalTestMoMo
+            {(process.env.EXPO_PUBLIC_APP_ENV === 'sandbox' || process.env.EXPO_PUBLIC_APP_ENV === 'development') && internalTestMoMo
               ? 'Internal test number — payment completes instantly (no MoMo PIN).'
               : 'Pay with the number registered on your MTN or Airtel wallet.'}
           </ThemedText>

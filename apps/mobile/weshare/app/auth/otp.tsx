@@ -23,10 +23,11 @@ import { AuthLogo } from '@/components/auth-logo';
 import { ThemedText } from '@/components/themed-text';
 import { useRedirectIfAuthenticated } from '@/hooks/use-redirect-if-authenticated';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { isOtpDevBypassEnabled } from '@/lib/app-env';
+import { DEV_UI_ENABLED } from '@/lib/app-env';
 import { resolvePostLoginRoute } from '@/lib/auth/navigation';
-import { verifyOtp, sendOtp, fetchDevOtpCode } from '@/lib/auth/otp';
+import { verifyOtp, sendOtp, RESEND_COOLDOWN_SECONDS } from '@/lib/auth/otp';
 import { isSupabaseAuthTestPhone, SUPABASE_AUTH_TEST_OTP } from '@/lib/auth/phone';
+import { supabase } from '@/lib/supabase';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -34,6 +35,99 @@ const ACCENT = '#FF6B35';
 const TEAL = '#00C9B1';
 const DANGER = '#EF4444';
 const DIGITS = 6;
+
+const DevOtpBanner =
+  (process.env.EXPO_PUBLIC_APP_ENV === 'sandbox' || process.env.EXPO_PUBLIC_APP_ENV === 'development')
+    ? function DevOtpBanner({
+        phone,
+        isTestPhone,
+        showDevBypassUi,
+        resent,
+        onSelectCode,
+      }: {
+        phone: string;
+        isTestPhone: boolean;
+        showDevBypassUi: boolean;
+        resent: boolean;
+        onSelectCode: (code: string) => void;
+      }) {
+        const [devOtp, setDevOtp] = useState<string | null>(null);
+        const [devOtpLoading, setDevOtpLoading] = useState(false);
+
+        useEffect(() => {
+          if (isTestPhone) {
+            setDevOtp(SUPABASE_AUTH_TEST_OTP);
+            setDevOtpLoading(false);
+            return;
+          }
+
+          if (!showDevBypassUi || !phone) return;
+
+          let cancelled = false;
+          setDevOtp(null);
+          setDevOtpLoading(true);
+
+          async function pollDevOtp() {
+            for (let i = 0; i < 20 && !cancelled; i++) {
+              const { data, error } = await supabase.functions.invoke('dev-otp-peek', {
+                body: { phone },
+              });
+              const otp = !error && (data as { otp?: string | null } | null)?.otp;
+              const next = otp && /^\d{6}$/.test(otp) ? otp : null;
+              if (next) {
+                if (!cancelled) {
+                  setDevOtp(next);
+                  setDevOtpLoading(false);
+                }
+                return;
+              }
+              await new Promise(r => setTimeout(r, 600));
+            }
+            if (!cancelled) setDevOtpLoading(false);
+          }
+
+          void pollDevOtp();
+          return () => {
+            cancelled = true;
+          };
+        }, [phone, showDevBypassUi, isTestPhone, resent]);
+
+        return (
+          <Pressable
+            onPress={() => devOtp && onSelectCode(devOtp)}
+            disabled={!devOtp}
+            style={[
+              styles.devOtpBanner,
+              devOtp ? styles.devOtpBannerReady : null,
+            ]}
+          >
+            <Text style={styles.devOtpLabel}>
+              {isTestPhone ? 'TEST NUMBER CODE' : 'YOUR TEST CODE'}
+            </Text>
+            {devOtpLoading && !devOtp ? (
+              <ActivityIndicator color={TEAL} style={styles.devOtpSpinner} />
+            ) : (
+              <View style={styles.devOtpDigitRow}>
+                {(devOtp ?? '······').split('').map((char, i) => (
+                  <View key={i} style={styles.devOtpDigitBox}>
+                    <Text style={styles.devOtpDigitText} allowFontScaling={false}>
+                      {char}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <Text style={styles.devOtpHint}>
+              {devOtp
+                ? isTestPhone
+                  ? 'Tap to fill · always 123456 for +250780000001–006'
+                  : 'Tap to fill · valid 5 min'
+                : 'Generating code…'}
+            </Text>
+          </Pressable>
+        );
+      }
+    : null;
 
 export default function OtpScreen() {
   const router = useRouter();
@@ -46,48 +140,15 @@ export default function OtpScreen() {
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [resent, setResent] = useState(false);
-  const [countdown, setCountdown] = useState(30);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
-  const [devOtpLoading, setDevOtpLoading] = useState(false);
+  const [countdown, setCountdown] = useState(RESEND_COOLDOWN_SECONDS);
   const inputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
-  const otpDevBypass = isOtpDevBypassEnabled();
-  const isTestPhone = Boolean(phone && isSupabaseAuthTestPhone(phone));
+  const isDevEnv =
+    process.env.EXPO_PUBLIC_APP_ENV === 'sandbox' ||
+    process.env.EXPO_PUBLIC_APP_ENV === 'development';
+  const otpDevBypass = isDevEnv && DEV_UI_ENABLED;
+  const isTestPhone = isDevEnv && Boolean(phone && isSupabaseAuthTestPhone(phone));
   const showDevBypassUi = otpDevBypass && !isTestPhone;
-
-  useEffect(() => {
-    if (isTestPhone) {
-      setDevOtp(SUPABASE_AUTH_TEST_OTP);
-      setDevOtpLoading(false);
-      return;
-    }
-
-    if (!showDevBypassUi || !phone) return;
-
-    let cancelled = false;
-    setDevOtp(null);
-    setDevOtpLoading(true);
-
-    async function pollDevOtp() {
-      for (let i = 0; i < 20 && !cancelled; i++) {
-        const next = await fetchDevOtpCode(phone);
-        if (next) {
-          if (!cancelled) {
-            setDevOtp(next);
-            setDevOtpLoading(false);
-          }
-          return;
-        }
-        await new Promise(r => setTimeout(r, 600));
-      }
-      if (!cancelled) setDevOtpLoading(false);
-    }
-
-    void pollDevOtp();
-    return () => {
-      cancelled = true;
-    };
-  }, [phone, showDevBypassUi, isTestPhone, resent]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -121,10 +182,14 @@ export default function OtpScreen() {
     if (resending || countdown > 0) return;
     setResending(true);
     setError('');
-    await sendOtp(phone);
+    const err = await sendOtp(phone);
     setResending(false);
+    if (err) {
+      setError(err);
+      return;
+    }
     setResent(true);
-    setCountdown(30);
+    setCountdown(RESEND_COOLDOWN_SECONDS);
     setCode('');
     setTimeout(() => setResent(false), 3000);
   }
@@ -163,55 +228,30 @@ export default function OtpScreen() {
             showsVerticalScrollIndicator={false}
             bounces
           >
-            <View style={[styles.hero, (showDevBypassUi || isTestPhone) && styles.heroCompact]}>
-              {!showDevBypassUi && !isTestPhone ? <AuthLogo /> : null}
+            <View style={[styles.hero, (isDevEnv && (showDevBypassUi || isTestPhone)) && styles.heroCompact]}>
+              {(!isDevEnv || (!showDevBypassUi && !isTestPhone)) ? <AuthLogo /> : null}
               <ThemedText style={styles.heroTitle}>Enter the code</ThemedText>
               <ThemedText style={styles.heroSub}>
-                {isTestPhone
+                {isDevEnv && isTestPhone
                   ? 'Supabase test number — use the code below.'
-                  : showDevBypassUi
+                  : isDevEnv && showDevBypassUi
                     ? 'Use the test code below — no SMS was sent.'
                     : 'We texted a 6-digit code to '}
-                {!showDevBypassUi && !isTestPhone ? (
+                {(!isDevEnv || (!showDevBypassUi && !isTestPhone)) ? (
                   <ThemedText style={styles.heroPhone}>{phone}</ThemedText>
                 ) : null}
               </ThemedText>
             </View>
 
-            <View style={[styles.card, (showDevBypassUi || isTestPhone) && styles.cardWithDevBanner]}>
-              {showDevBypassUi || isTestPhone ? (
-                <Pressable
-                  onPress={() => devOtp && setCode(devOtp)}
-                  disabled={!devOtp}
-                  style={[
-                    styles.devOtpBanner,
-                    devOtp ? styles.devOtpBannerReady : null,
-                  ]}
-                >
-                  <Text style={styles.devOtpLabel}>
-                    {isTestPhone ? 'TEST NUMBER CODE' : 'YOUR TEST CODE'}
-                  </Text>
-                  {devOtpLoading && !devOtp ? (
-                    <ActivityIndicator color={TEAL} style={styles.devOtpSpinner} />
-                  ) : (
-                    <View style={styles.devOtpDigitRow}>
-                      {(devOtp ?? '······').split('').map((char, i) => (
-                        <View key={i} style={styles.devOtpDigitBox}>
-                          <Text style={styles.devOtpDigitText} allowFontScaling={false}>
-                            {char}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                  <Text style={styles.devOtpHint}>
-                    {devOtp
-                      ? isTestPhone
-                        ? 'Tap to fill · always 123456 for +250780000001–006'
-                        : 'Tap to fill · valid 5 min'
-                      : 'Generating code…'}
-                  </Text>
-                </Pressable>
+            <View style={[styles.card, (isDevEnv && (showDevBypassUi || isTestPhone)) && styles.cardWithDevBanner]}>
+              {DevOtpBanner && (showDevBypassUi || isTestPhone) ? (
+                <DevOtpBanner
+                  phone={phone}
+                  isTestPhone={isTestPhone}
+                  showDevBypassUi={showDevBypassUi}
+                  resent={resent}
+                  onSelectCode={setCode}
+                />
               ) : null}
 
               <ThemedText style={styles.fieldLabel}>VERIFICATION CODE</ThemedText>
@@ -310,6 +350,10 @@ export default function OtpScreen() {
                       : "Didn't get a code? Resend"}
                 </ThemedText>
               </Pressable>
+
+              <ThemedText style={styles.limitNote}>
+                Codes are limited to 2 per hour to protect your account.
+              </ThemedText>
             </View>
           </ScrollView>
         </View>
@@ -478,5 +522,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: 2,
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+  },
+  limitNote: {
+    color: 'rgba(255,255,255,0.40)',
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
+    marginTop: 10,
+    fontWeight: '500',
   },
 });

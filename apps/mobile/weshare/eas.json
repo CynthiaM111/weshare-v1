@@ -31,8 +31,7 @@
       },
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_GPS_DEV_MODE": "false",
-        "EXPO_PUBLIC_OTP_DEV_BYPASS": "true"
+        "EXPO_PUBLIC_GPS_DEV_MODE": "false"
       }
     },
     "production": {

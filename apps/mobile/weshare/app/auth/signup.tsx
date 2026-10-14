@@ -23,7 +23,7 @@ import { useRedirectIfAuthenticated } from '@/hooks/use-redirect-if-authenticate
 import { useSession } from '@/hooks/use-session';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { normalizeAuthRedirect, parseAuthRedirectRoute } from '@/lib/auth/navigation';
-import { upsertProfile } from '@/lib/auth/users';
+import { updateProfileName } from '@/lib/auth/users';
 
 const NAVY = '#08111F';
 const NAVY_2 = '#0E1E35';
@@ -56,10 +56,7 @@ export default function SignupScreen() {
       return;
     }
 
-    const err = await upsertProfile(session.userId, {
-      fullName: fullName.trim(),
-      phoneE164: session.phoneE164,
-    });
+    const err = await updateProfileName(session.userId, fullName.trim());
 
     setLoading(false);
     if (err) {

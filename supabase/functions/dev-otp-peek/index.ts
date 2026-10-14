@@ -5,7 +5,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import {
+  isDevBypassNumber,
   isOtpDevBypassEnabled,
+  maskPhone,
   normalizePhoneE164,
 } from "../_shared/otp-dev-bypass.ts";
 
@@ -48,6 +50,15 @@ Deno.serve(async (req) => {
   if (!phone) {
     return new Response(JSON.stringify({ error: "phone is required" }), {
       status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // dev-otp-peek serves ONLY listed numbers and returns 404 otherwise. Log masked attempts.
+  if (!isDevBypassNumber(phone)) {
+    console.warn(`[dev-otp-peek] Rejected peek attempt for unlisted phone: ${maskPhone(phone)}`);
+    return new Response(JSON.stringify({ error: "Not found" }), {
+      status: 404,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

@@ -52,3 +52,9 @@ export const Shadow = {
     elevation: 12,
   },
 };
+
+
+export const Fonts = {
+  rounded: 'System',
+  mono: 'SpaceMono',
+};
